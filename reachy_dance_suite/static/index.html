@@ -1,0 +1,1870 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reachy Dance Suite</title>
+    <style>
+        :root {
+            --navy: #2B4C7E;
+            --light-blue: #3bb0d1;
+            --light-green: #3dde99;
+            --yellow: #ffc261;
+            --pink: #ff6170;
+            --white: #ffffff;
+            --dark-bg: #1a1a2e;
+            --card-bg: #252540;
+        }
+
+        /* Animated gradient border */
+        @keyframes rotating-border {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: var(--dark-bg);
+            color: var(--white);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: var(--light-blue);
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2rem;
+            text-shadow: 0 0 20px rgba(59, 176, 209, 0.4);
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        /* Animated border card */
+        .card-glow {
+            position: relative;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            overflow: hidden;
+            box-shadow: 0 0 30px rgba(59, 176, 209, 0.15);
+        }
+
+        .card-glow::before {
+            content: "";
+            position: absolute;
+            z-index: 1;
+            width: 200vmax;
+            height: 200vmax;
+            top: 50%;
+            left: 50%;
+            margin-left: -100vmax;
+            margin-top: -100vmax;
+            background: conic-gradient(from 0deg,
+                    #3bb0d1 0deg,
+                    #3dde99 72deg,
+                    #ffc261 144deg,
+                    #ff6170 216deg,
+                    #2B4C7E 288deg,
+                    #3bb0d1 360deg);
+            animation: rotating-border 6s linear infinite;
+        }
+
+        .card-glow::after {
+            content: "";
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            right: 3px;
+            bottom: 3px;
+            background-color: var(--card-bg);
+            border-radius: 10px;
+            z-index: 2;
+        }
+
+        .card-glow>* {
+            position: relative;
+            z-index: 3;
+        }
+
+        .card h2 {
+            color: var(--yellow);
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 10px;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Mode Selection */
+        .mode-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .mode-btn {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid var(--navy);
+            background: transparent;
+            color: var(--white);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 1rem;
+        }
+
+        .mode-btn:hover {
+            border-color: var(--light-blue);
+            box-shadow: 0 0 15px rgba(59, 176, 209, 0.2);
+        }
+
+        .mode-btn.selected {
+            border-color: transparent;
+        }
+
+        /* Live Groove - Light Blue */
+        .mode-btn[data-mode="live_groove"].selected {
+            background: linear-gradient(135deg, #3bb0d1 0%, #2a9dbd 100%);
+            box-shadow: 0 4px 15px rgba(59, 176, 209, 0.5), 0 0 20px rgba(59, 176, 209, 0.3);
+        }
+
+        /* Bluetooth Streamer - Pink */
+        .mode-btn[data-mode="bluetooth_streamer"].selected {
+            background: linear-gradient(135deg, #ff6170 0%, #e5475c 100%);
+            box-shadow: 0 4px 15px rgba(255, 97, 112, 0.5), 0 0 20px rgba(255, 97, 112, 0.3);
+        }
+
+        /* Connected Choreographer - Green */
+        .mode-btn[data-mode="connected_choreographer"].selected {
+            background: linear-gradient(135deg, #3dde99 0%, #2bc985 100%);
+            box-shadow: 0 4px 15px rgba(61, 222, 153, 0.5), 0 0 20px rgba(61, 222, 153, 0.3);
+        }
+
+        .mode-btn .mode-name {
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        /* Mode-specific settings panels */
+        .mode-settings-panel {
+            display: none;
+            margin-top: 15px;
+            padding: 15px;
+            background: var(--dark-bg);
+            border-radius: 8px;
+        }
+
+        .mode-settings-panel.active {
+            display: block;
+        }
+
+        .mode-settings-panel h3 {
+            margin-bottom: 15px;
+            font-size: 1rem;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Mode-specific colors for headers */
+        #settings-live_groove h3 {
+            color: #3bb0d1;
+        }
+
+        #settings-bluetooth_streamer h3 {
+            color: #ff6170;
+        }
+
+        #settings-connected_choreographer h3 {
+            color: #3dde99;
+        }
+
+        /* Control Buttons */
+        .controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        .control-btn {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        .start-btn {
+            background: linear-gradient(135deg, #3dde99 0%, #2bc985 100%);
+            color: var(--dark-bg);
+        }
+
+        .start-btn:hover {
+            background: linear-gradient(135deg, #4ee8a6 0%, #3dde99 100%);
+            box-shadow: 0 4px 20px rgba(61, 222, 153, 0.5), 0 0 30px rgba(61, 222, 153, 0.3);
+        }
+
+        .start-btn:disabled {
+            background: linear-gradient(135deg, #666 0%, #555 100%);
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .stop-btn {
+            background: linear-gradient(135deg, #ff6170 0%, #e5475c 100%);
+            color: var(--white);
+        }
+
+        .stop-btn:hover {
+            background: linear-gradient(135deg, #ff7a87 0%, #ff6170 100%);
+            box-shadow: 0 4px 20px rgba(255, 97, 112, 0.5), 0 0 30px rgba(255, 97, 112, 0.3);
+        }
+
+        /* URL Input */
+        .url-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid var(--navy);
+            background: var(--dark-bg);
+            color: var(--white);
+            border-radius: 8px;
+            font-size: 1rem;
+            margin-bottom: 15px;
+        }
+
+        .url-input:focus {
+            outline: none;
+            border-color: var(--light-blue);
+        }
+
+        /* Sliders */
+        .slider-group {
+            margin-bottom: 15px;
+        }
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+        }
+
+        .slider-value {
+            color: var(--light-blue);
+            font-weight: bold;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: linear-gradient(to right, var(--light-blue) 0%, var(--light-blue) 50%, var(--dark-bg) 50%, var(--dark-bg) 100%);
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: linear-gradient(to right, var(--light-blue), var(--navy));
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #3bb0d1 0%, #2a9dbd 100%);
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(59, 176, 209, 0.5);
+            transition: box-shadow 0.2s;
+            margin-top: -6px;
+        }
+
+        input[type="range"]:hover::-webkit-slider-thumb {
+            box-shadow: 0 0 15px rgba(59, 176, 209, 0.8), 0 0 25px rgba(59, 176, 209, 0.4);
+        }
+
+        /* Collapsible sections */
+        .collapsible {
+            margin-top: 15px;
+        }
+
+        .collapsible-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            color: var(--light-blue);
+            border: 1px solid rgba(59, 176, 209, 0.3);
+        }
+
+        .collapsible-header:hover {
+            background: rgba(59, 176, 209, 0.1);
+        }
+
+        .collapsible-header .arrow {
+            transition: transform 0.2s;
+        }
+
+        .collapsible.open .collapsible-header .arrow {
+            transform: rotate(180deg);
+        }
+
+        .collapsible-content {
+            display: none;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 0 0 8px 8px;
+            margin-top: -4px;
+        }
+
+        .collapsible.open .collapsible-content {
+            display: block;
+        }
+
+        /* Moves Grid */
+        .moves-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .move-item {
+            background: var(--card-bg);
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid transparent;
+            transition: all 0.2s ease;
+        }
+
+        .move-item:hover {
+            border-color: rgba(59, 176, 209, 0.3);
+            box-shadow: 0 0 15px rgba(59, 176, 209, 0.1);
+        }
+
+        .move-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .move-name {
+            font-size: 0.85rem;
+            color: var(--light-blue);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .move-value {
+            font-size: 0.9rem;
+            color: var(--yellow);
+            font-weight: bold;
+            min-width: 40px;
+            text-align: right;
+        }
+
+        .move-slider {
+            width: 100%;
+        }
+
+        /* Mirror toggle */
+        .mirror-toggle {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 6px;
+            padding-top: 6px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .mirror-toggle label {
+            font-size: 0.75rem;
+            color: #888;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .mirror-toggle input[type="checkbox"] {
+            width: 14px;
+            height: 14px;
+            cursor: pointer;
+            accent-color: var(--light-green);
+        }
+
+        .mirror-toggle input[type="checkbox"]:checked+span {
+            color: var(--light-green);
+        }
+
+        /* Spotify Results */
+        .spotify-result {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            background: var(--card-bg);
+            border-radius: 8px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .spotify-result:hover {
+            background: rgba(29, 185, 84, 0.1);
+            transform: translateX(5px);
+        }
+
+        .spotify-result img {
+            width: 50px;
+            height: 50px;
+            border-radius: 4px;
+            margin-right: 15px;
+        }
+
+        .spotify-info {
+            flex: 1;
+        }
+
+        .spotify-title {
+            font-weight: bold;
+            color: var(--white);
+        }
+
+        .spotify-artist {
+            font-size: 0.9rem;
+            color: #888;
+        }
+
+        .spotify-login-btn {
+            background: #1DB954;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 20px auto;
+        }
+
+        /* BYOK Styles */
+        .setup-accordion {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--navy);
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .setup-accordion summary {
+            padding: 15px;
+            cursor: pointer;
+            color: var(--light-blue);
+            display: flex;
+            justify-content: space-between;
+            font-weight: bold;
+            list-style: none;
+            outline: none;
+        }
+
+        .setup-accordion summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .setup-content {
+            padding: 15px;
+            background: var(--dark-bg);
+            border-top: 1px solid var(--navy);
+        }
+
+        .step {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .step-num {
+            background: var(--navy);
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            flex-shrink: 0;
+        }
+
+        .step-text {
+            font-size: 0.9rem;
+            color: #ddd;
+            line-height: 1.4;
+            flex: 1;
+        }
+
+        .copy-box {
+            display: flex;
+            margin-top: 5px;
+            background: #000;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .copy-box code {
+            padding: 8px;
+            font-family: monospace;
+            color: var(--yellow);
+            flex: 1;
+            font-size: 0.8rem;
+        }
+
+        .copy-btn {
+            background: var(--navy);
+            color: white;
+            border: none;
+            padding: 0 10px;
+            cursor: pointer;
+        }
+
+        .client-id-container label {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--light-blue);
+            margin-bottom: 8px;
+        }
+
+        /* Button Row */
+        .button-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .secondary-btn {
+            background: var(--navy);
+            color: var(--white);
+        }
+
+        .secondary-btn:hover {
+            background: #3a5d91;
+        }
+
+        /* Status Bar */
+        .status-bar {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            padding: 15px;
+            background: var(--card-bg);
+            border-radius: 12px;
+        }
+
+        .status-item {
+            text-align: center;
+        }
+
+        .status-label {
+            font-size: 0.7rem;
+            color: #888;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .status-value {
+            font-size: 1rem;
+            font-weight: bold;
+        }
+
+        .status-value.connected {
+            color: var(--light-green);
+            text-shadow: 0 0 10px rgba(61, 222, 153, 0.6);
+        }
+
+        .status-value.disconnected {
+            color: var(--pink);
+            text-shadow: 0 0 10px rgba(255, 97, 112, 0.4);
+        }
+
+        /* Progress Bar */
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: var(--dark-bg);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--light-blue), var(--light-green));
+            transition: width 0.3s;
+            box-shadow: 0 0 10px rgba(61, 222, 153, 0.5);
+        }
+
+        /* Message */
+        .message {
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: none;
+        }
+
+        .message.error {
+            display: block;
+            background: rgba(255, 97, 112, 0.2);
+            border: 1px solid var(--pink);
+            color: var(--pink);
+        }
+
+        .message.success {
+            display: block;
+            background: rgba(61, 222, 153, 0.2);
+            border: 1px solid var(--light-green);
+            color: var(--light-green);
+        }
+
+        /* Calibration options box */
+        .calibration-box {
+            margin-bottom: 15px;
+            padding: 12px;
+            background: rgba(59, 176, 209, 0.1);
+            border-radius: 8px;
+            border: 1px solid rgba(59, 176, 209, 0.3);
+        }
+
+        .calibration-box .box-label {
+            margin-bottom: 10px;
+            font-size: 0.85rem;
+            color: var(--light-blue);
+        }
+
+        .calibration-box label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+
+        .calibration-box label:last-of-type {
+            margin-bottom: 0;
+        }
+
+        .calibration-box input[type="radio"] {
+            accent-color: var(--light-blue);
+        }
+
+        .profile-status {
+            font-size: 0.75rem;
+            color: #888;
+            margin-top: 8px;
+        }
+
+        .save-profile-btn {
+            margin-top: 12px;
+            padding: 8px 16px;
+            background: var(--navy);
+            color: var(--white);
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+            width: 100%;
+        }
+
+        .save-profile-btn:hover {
+            background: #3a5d91;
+            box-shadow: 0 2px 8px rgba(43, 76, 126, 0.4);
+        }
+
+        .save-profile-btn:disabled {
+            background: #444;
+            cursor: not-allowed;
+        }
+
+        #load-profile-label.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        #load-profile-label.disabled input {
+            cursor: not-allowed;
+        }
+
+        /* Safety Tuning Accordion */
+        .safety-accordion {
+            margin-top: 20px;
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .moves-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .status-bar {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Reachy Dance Suite</h1>
+
+        <div id="message" class="message"></div>
+
+        <!-- Mode Selection -->
+        <div class="card card-glow">
+            <h2>Dance Mode</h2>
+            <div class="mode-buttons">
+                <button class="mode-btn selected" data-mode="live_groove" onclick="selectMode('live_groove')">
+                    <span class="mode-name">Live Groove</span>
+                </button>
+                <button class="mode-btn" data-mode="bluetooth_streamer" onclick="selectMode('bluetooth_streamer')">
+                    <span class="mode-name">Bluetooth Streamer</span>
+                </button>
+                <button class="mode-btn" data-mode="connected_choreographer" onclick="selectMode('connected_choreographer')">
+                    <span class="mode-name">Connected Choreographer</span>
+                </button>
+            </div>
+
+            <!-- Live Groove Settings -->
+            <div id="settings-live_groove" class="mode-settings-panel active">
+                <h3>Live Groove Settings</h3>
+
+                <div class="calibration-box">
+                    <div class="box-label">Calibration Mode</div>
+                    <label>
+                        <input type="radio" name="calibration-mode" value="calibrate" checked>
+                        <span>Calibrate environment on start</span>
+                    </label>
+                    <label id="load-profile-label">
+                        <input type="radio" name="calibration-mode" value="load" id="load-profile-radio" disabled>
+                        <span id="load-profile-text">Load saved profile (none found)</span>
+                    </label>
+                    <div id="profile-status" class="profile-status"></div>
+                    <button id="save-profile-btn" class="save-profile-btn" onclick="saveProfile()"
+                        style="display: none;">
+                        Save Current Calibration
+                    </button>
+                </div>
+
+                <div class="slider-group">
+                    <div class="slider-label">
+                        <span>Intensity</span>
+                        <span id="mode-live_groove-intensity-value" class="slider-value">1.00</span>
+                    </div>
+                    <input type="range" id="mode-live_groove-intensity-slider" min="0.1" max="2.0" step="0.05" value="1.0"
+                        oninput="updateModeSlider('live_groove', 'intensity', this.value)">
+                </div>
+
+                <div class="slider-group">
+                    <div class="slider-label">
+                        <span>Volume Threshold</span>
+                        <span id="mode-live_groove-volume_gate_threshold-value" class="slider-value">0.005</span>
+                    </div>
+                    <input type="range" id="mode-live_groove-volume_gate_threshold-slider" min="0.001" max="0.020" step="0.001"
+                        value="0.005" oninput="updateModeSlider('live_groove', 'volume_gate_threshold', this.value)">
+                    <div style="font-size: 0.75rem; color: #888; margin-top: 4px;">
+                        Lower = more sensitive to quiet music
+                    </div>
+                </div>
+
+                <!-- Collapsible Move Dampening -->
+                <div class="collapsible" id="move-dampening-collapsible">
+                    <div class="collapsible-header" onclick="toggleCollapsible('move-dampening-collapsible')">
+                        <span>Move Dampening</span>
+                        <span class="arrow">&#9660;</span>
+                    </div>
+                    <div class="collapsible-content">
+                        <p style="color: #888; margin-bottom: 15px; font-size: 0.85rem;">
+                            Adjust amplitude for each dance move. Check "+ Mirrored" to add a Y-flipped version.
+                        </p>
+                        <div id="moves-grid" class="moves-grid">
+                            <p style="color: #666;">Loading moves...</p>
+                        </div>
+                        <div class="button-row">
+                            <button class="control-btn start-btn" onclick="applyMoves()">Apply</button>
+                            <button class="control-btn secondary-btn" onclick="resetMoves()">Reset</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Connected Choreographer Settings -->
+            <div id="settings-connected_choreographer" class="mode-settings-panel">
+                <h3>Connected Choreographer Settings</h3>
+
+                <!-- YouTube URL Section -->
+                <div style="margin-bottom: 20px;">
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="youtube-url" class="url-input" style="margin-bottom: 0;"
+                            placeholder="Enter YouTube URL...">
+                        <button class="control-btn start-btn" style="flex: 0 0 100px;"
+                            onclick="submitYoutubeUrl()">Submit</button>
+                    </div>
+                </div>
+
+                <div style="text-align: center; color: #666; margin: 15px 0; font-size: 0.9rem;">— OR —</div>
+
+                <!-- Spotify Section -->
+                <div id="spotify-login-section" style="display: none;">
+                    <p style="text-align: center; color: #ccc; margin-bottom: 20px;">
+                        Connect your Spotify Premium account.
+                    </p>
+
+                    <details class="setup-accordion" id="setup-details">
+                        <summary>
+                            <span>First Time Setup (Click Here)</span>
+                            <span>&#9660;</span>
+                        </summary>
+                        <div class="setup-content">
+                            <div class="step">
+                                <span class="step-num">1</span>
+                                <div class="step-text">
+                                    Go to <a href="https://developer.spotify.com/dashboard" target="_blank"
+                                        style="color: var(--light-blue);">Spotify Developer Dashboard</a> and log in.
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-num">2</span>
+                                <div class="step-text">
+                                    Click <strong>Create App</strong>. Name it "Reachy".<br>
+                                    Set <strong>Redirect URI</strong> to exactly:
+                                    <div class="copy-box">
+                                        <code id="redirect-uri-text">http://127.0.0.1:9000/api/spotify/callback</code>
+                                        <button class="copy-btn" onclick="copyUri()">Copy</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-num">3</span>
+                                <div class="step-text">
+                                    Click Save. Copy the <strong>Client ID</strong> and paste it below.
+                                </div>
+                            </div>
+                        </div>
+                    </details>
+
+                    <div class="client-id-container" style="margin-bottom: 20px;">
+                        <label>Spotify Client ID</label>
+                        <input type="text" id="custom-client-id" class="url-input"
+                            placeholder="e.g. 4a2b6c... (Paste here)" oninput="saveClientId(this.value)">
+                    </div>
+
+                    <button class="spotify-login-btn" onclick="spotifyLogin()">Login with Spotify</button>
+                </div>
+
+                <!-- Spotify Search Section (Post-Login) -->
+                <div id="spotify-search-section" style="display: none;">
+                    <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                        <input type="text" id="spotify-search-input" class="url-input" style="margin-bottom: 0;"
+                            placeholder="Search Spotify for a song..." onkeypress="if(event.key === 'Enter') searchSpotify()">
+                        <button class="control-btn start-btn" style="flex: 0 0 100px;"
+                            onclick="searchSpotify()">Search</button>
+                    </div>
+
+                    <div id="spotify-results"></div>
+
+                    <div style="margin-top: 15px; text-align: right;">
+                        <button class="control-btn secondary-btn" style="padding: 8px 15px; font-size: 0.9rem;"
+                            onclick="disconnectSpotify()">Disconnect Spotify</button>
+                    </div>
+                </div>
+
+                <!-- Shared Sliders -->
+                <div class="slider-group" style="margin-top: 20px;">
+                    <div class="slider-label">
+                        <span>Amplitude Scale</span>
+                        <span id="mode-connected_choreographer-amplitude_scale-value" class="slider-value">0.50</span>
+                    </div>
+                    <input type="range" id="mode-connected_choreographer-amplitude_scale-slider" min="0.1" max="1.5" step="0.05"
+                        value="0.5" oninput="updateModeSlider('connected_choreographer', 'amplitude_scale', this.value)">
+                </div>
+
+                <div class="slider-group">
+                    <div class="slider-label">
+                        <span>Interpolation (LERP)</span>
+                        <span id="mode-connected_choreographer-interpolation_alpha-value" class="slider-value">0.30</span>
+                    </div>
+                    <input type="range" id="mode-connected_choreographer-interpolation_alpha-slider" min="0.05" max="1.0" step="0.05"
+                        value="0.3" oninput="updateModeSlider('connected_choreographer', 'interpolation_alpha', this.value)">
+                </div>
+
+                <div class="slider-group">
+                    <div class="slider-label">
+                        <span>Antenna Beat Threshold</span>
+                        <span id="mode-connected_choreographer-antenna_energy_threshold-value" class="slider-value">0.25</span>
+                    </div>
+                    <input type="range" id="mode-connected_choreographer-antenna_energy_threshold-slider" min="0.0" max="0.5" step="0.01"
+                        value="0.25" oninput="updateModeSlider('connected_choreographer', 'antenna_energy_threshold', this.value)">
+                    <div style="font-size: 0.75rem; color: #888; margin-top: 4px;">
+                        Lower = antennas drop on more beats
+                    </div>
+                </div>
+
+                <div class="slider-group">
+                    <div class="slider-label">
+                        <span>Antenna Gain</span>
+                        <span id="mode-connected_choreographer-antenna_gain-value" class="slider-value">20.0</span>
+                    </div>
+                    <input type="range" id="mode-connected_choreographer-antenna_gain-slider" min="1.0" max="50.0" step="1.0" value="20.0"
+                        oninput="updateModeSlider('connected_choreographer', 'antenna_gain', this.value)">
+                </div>
+
+                <div class="slider-group">
+                    <div class="slider-label">
+                        <span>Antenna Sensitivity</span>
+                        <span id="mode-connected_choreographer-antenna_sensitivity-value" class="slider-value">1.0</span>
+                    </div>
+                    <input type="range" id="mode-connected_choreographer-antenna_sensitivity-slider" min="0.1" max="3.0" step="0.1"
+                        value="1.0" oninput="updateModeSlider('connected_choreographer', 'antenna_sensitivity', this.value)">
+                </div>
+
+                <div class="slider-group">
+                    <div class="slider-label">
+                        <span>Antenna Max Span</span>
+                        <span id="mode-connected_choreographer-antenna_amplitude-value" class="slider-value">3.15</span>
+                    </div>
+                    <input type="range" id="mode-connected_choreographer-antenna_amplitude-slider" min="0.5" max="3.15" step="0.05"
+                        value="3.15" oninput="updateModeSlider('connected_choreographer', 'antenna_amplitude', this.value)">
+                </div>
+            </div>
+
+            <!-- Bluetooth Streamer Settings -->
+            <div id="settings-bluetooth_streamer" class="mode-settings-panel">
+                <h3>Bluetooth Streamer Settings</h3>
+
+                <div class="slider-group">
+                    <div class="slider-label">
+                        <span>Max Yaw (body sway)</span>
+                        <span id="mode-bluetooth_streamer-max_yaw-value" class="slider-value">0.75</span>
+                    </div>
+                    <input type="range" id="mode-bluetooth_streamer-max_yaw-slider" min="0.1" max="1.5" step="0.05" value="0.75"
+                        oninput="updateModeSlider('bluetooth_streamer', 'max_yaw', this.value)">
+                </div>
+
+                <div class="slider-group">
+                    <div class="slider-label">
+                        <span>Max Pitch (head nod)</span>
+                        <span id="mode-bluetooth_streamer-max_pitch-value" class="slider-value">0.30</span>
+                    </div>
+                    <input type="range" id="mode-bluetooth_streamer-max_pitch-slider" min="0.05" max="0.6" step="0.01" value="0.30"
+                        oninput="updateModeSlider('bluetooth_streamer', 'max_pitch', this.value)">
+                </div>
+
+                <div class="slider-group">
+                    <div class="slider-label">
+                        <span>Max Z (vertical bounce)</span>
+                        <span id="mode-bluetooth_streamer-max_z-value" class="slider-value">0.015</span>
+                    </div>
+                    <input type="range" id="mode-bluetooth_streamer-max_z-slider" min="0.005" max="0.03" step="0.001" value="0.015"
+                        oninput="updateModeSlider('bluetooth_streamer', 'max_z', this.value)">
+                </div>
+            </div>
+
+            <div class="controls">
+                <button id="start-btn" class="control-btn start-btn" onclick="startMode()">Start</button>
+                <button id="stop-btn" class="control-btn stop-btn" onclick="stopMode()">Stop</button>
+            </div>
+        </div>
+
+        <!-- Safety Tuning (Collapsible) -->
+        <div class="card">
+            <div class="collapsible" id="safety-collapsible">
+                <div class="collapsible-header" onclick="toggleCollapsible('safety-collapsible')">
+                    <span>Safety Tuning</span>
+                    <span class="arrow">&#9660;</span>
+                </div>
+                <div class="collapsible-content">
+                    <div class="slider-group">
+                        <div class="slider-label">
+                            <span>Intensity</span>
+                            <span id="intensity-value" class="slider-value">1.000</span>
+                        </div>
+                        <input type="range" id="intensity-slider" min="0.1" max="3.0" step="0.05" value="1.0"
+                            oninput="updateSlider('intensity', this.value)">
+                    </div>
+
+                    <div class="slider-group">
+                        <div class="slider-label">
+                            <span>Smoothing</span>
+                            <span id="smoothing-value" class="slider-value">1.000</span>
+                        </div>
+                        <input type="range" id="smoothing-slider" min="0.01" max="1.0" step="0.01" value="1.0"
+                            oninput="updateSlider('smoothing', this.value)">
+                    </div>
+
+                    <div class="slider-group">
+                        <div class="slider-label">
+                            <span>Z Threshold (collision)</span>
+                            <span id="z-threshold-value" class="slider-value">0.005</span>
+                        </div>
+                        <input type="range" id="z-threshold-slider" min="0.001" max="0.02" step="0.001" value="0.005"
+                            oninput="updateSlider('z_threshold', this.value)">
+                    </div>
+
+                    <div class="slider-group">
+                        <div class="slider-label">
+                            <span>Max Pitch at Low Z</span>
+                            <span id="max-pitch-value" class="slider-value">0.150</span>
+                        </div>
+                        <input type="range" id="max-pitch-slider" min="0.05" max="0.3" step="0.01" value="0.15"
+                            oninput="updateSlider('max_pitch_at_low_z', this.value)">
+                    </div>
+
+                    <button class="control-btn start-btn" style="margin-top: 10px" onclick="applySafetyConfig()">
+                        Apply Changes
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Bar -->
+        <div class="status-bar">
+            <div class="status-item">
+                <div class="status-label">Connection</div>
+                <div id="connection-status" class="status-value disconnected">---</div>
+            </div>
+            <div class="status-item">
+                <div class="status-label">Mode</div>
+                <div id="current-mode" class="status-value">-</div>
+            </div>
+            <div class="status-item">
+                <div class="status-label">State</div>
+                <div id="current-state" class="status-value">Idle</div>
+            </div>
+            <div class="status-item">
+                <div class="status-label">BPM / Beat</div>
+                <div id="bpm-display" class="status-value">-</div>
+            </div>
+        </div>
+        <div class="progress-bar">
+            <div id="progress-fill" class="progress-fill" style="width: 0%"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '';  // Same origin
+        let selectedMode = 'live_groove';
+        let statusInterval = null;
+        let ws = null;
+
+        // Toggle collapsible sections
+        function toggleCollapsible(id) {
+            const el = document.getElementById(id);
+            el.classList.toggle('open');
+        }
+
+        // Mode selection
+        function selectMode(mode) {
+            selectedMode = mode;
+
+            // Update button states
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.classList.toggle('selected', btn.dataset.mode === mode);
+            });
+
+            // Show/hide mode settings panels
+            document.querySelectorAll('.mode-settings-panel').forEach(panel => {
+                panel.classList.remove('active');
+            });
+            document.getElementById(`settings-${mode}`).classList.add('active');
+
+            // Check Spotify status when Connected Choreographer is selected
+            if (mode === 'connected_choreographer') {
+                checkSpotifyStatus();
+            }
+        }
+
+        // Start mode
+        async function startMode() {
+            const startBtn = document.getElementById('start-btn');
+            startBtn.disabled = true;
+
+            let body = {};
+
+            // Live Groove: Handle calibration options
+            if (selectedMode === 'live_groove') {
+                const calibrationMode = document.querySelector('input[name="calibration-mode"]:checked').value;
+                if (calibrationMode === 'load') {
+                    body.profile_path = 'default';
+                    body.skip_calibration = false;
+                    body.force_calibration = false;
+                } else {
+                    body.force_calibration = true;
+                    body.skip_calibration = false;
+                }
+            }
+
+            try {
+                const res = await fetch(`${API_BASE}/api/mode/${selectedMode}/start`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || 'Failed to start');
+                }
+
+                const modeNames = {
+                    'live_groove': 'Live Groove',
+                    'bluetooth_streamer': 'Bluetooth Streamer',
+                    'connected_choreographer': 'Connected Choreographer'
+                };
+                const modeName = modeNames[selectedMode] || selectedMode;
+                const modeMsg = selectedMode === 'live_groove' ?
+                    (body.profile_path ? `Started ${modeName} (loading profile)` : `Started ${modeName} (calibrating)`) :
+                    `Started ${modeName}`;
+                showMessage(modeMsg, 'success');
+            } catch (e) {
+                showMessage(e.message, 'error');
+            } finally {
+                startBtn.disabled = false;
+            }
+        }
+
+        // Submit YouTube URL for Connected Choreographer
+        async function submitYoutubeUrl() {
+            const url = document.getElementById('youtube-url').value;
+            if (!url) {
+                showMessage('Please enter a YouTube URL', 'error');
+                return;
+            }
+
+            try {
+                // First ensure we're in connected_choreographer mode
+                if (selectedMode !== 'connected_choreographer') {
+                    selectMode('connected_choreographer');
+                }
+
+                // Submit the YouTube URL
+                const res = await fetch(`${API_BASE}/api/mode/connected_choreographer/youtube`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url })
+                });
+
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || 'Failed to set YouTube URL');
+                }
+
+                showMessage('YouTube URL submitted. Downloading & Analyzing...', 'success');
+            } catch (e) {
+                showMessage(e.message, 'error');
+            }
+        }
+
+        // Stop mode
+        async function stopMode() {
+            try {
+                const response = await fetch(`${API_BASE}/api/mode/stop`, {
+                    method: 'POST'
+                });
+
+                const data = await response.json();
+                showMessage('Mode stopped', 'success');
+            } catch (error) {
+                showMessage('Connection error: ' + error.message, 'error');
+            }
+        }
+
+        // Spotify Logic
+        function copyUri() {
+            const text = document.getElementById('redirect-uri-text').textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = document.querySelector('.copy-btn');
+                const orig = btn.textContent;
+                btn.textContent = 'Copied!';
+                setTimeout(() => btn.textContent = orig, 2000);
+            });
+        }
+
+        function saveClientId(val) {
+            localStorage.setItem('spotify_client_id', val.trim());
+        }
+
+        function disconnectSpotify() {
+            localStorage.removeItem('spotify_client_id');
+            location.reload();
+        }
+
+        async function checkSpotifyStatus() {
+            try {
+                const res = await fetch(`${API_BASE}/api/spotify/status`);
+                const data = await res.json();
+
+                const loginSection = document.getElementById('spotify-login-section');
+                const searchSection = document.getElementById('spotify-search-section');
+
+                if (data.authenticated) {
+                    loginSection.style.display = 'none';
+                    searchSection.style.display = 'block';
+                } else {
+                    loginSection.style.display = 'block';
+                    searchSection.style.display = 'none';
+
+                    const saved = localStorage.getItem('spotify_client_id');
+                    const input = document.getElementById('custom-client-id');
+                    if (saved && input) {
+                        input.value = saved;
+                        document.getElementById('setup-details').open = false;
+                    } else {
+                        document.getElementById('setup-details').open = true;
+                    }
+                }
+            } catch (e) {
+                console.error('Spotify status check failed', e);
+            }
+        }
+
+        async function spotifyLogin() {
+            const cid = document.getElementById('custom-client-id').value.trim();
+            if (!cid) {
+                document.getElementById('setup-details').open = true;
+                document.getElementById('custom-client-id').focus();
+                showMessage('Please enter Client ID', 'error');
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_BASE}/api/spotify/login?client_id=${encodeURIComponent(cid)}`);
+                const data = await res.json();
+
+                const width = 500;
+                const height = 700;
+                const left = (window.screen.width / 2) - (width / 2);
+                const top = (window.screen.height / 2) - (height / 2);
+
+                const popup = window.open(data.url, 'Spotify Login', `width=${width},height=${height},top=${top},left=${left}`);
+
+                const poll = setInterval(async () => {
+                    if (popup.closed) {
+                        clearInterval(poll);
+                        checkSpotifyStatus();
+                    }
+
+                    try {
+                        const res = await fetch(`${API_BASE}/api/spotify/status`);
+                        const data = await res.json();
+                        if (data.authenticated) {
+                            clearInterval(poll);
+                            if (!popup.closed) popup.close();
+                            checkSpotifyStatus();
+                            showMessage('Connected!', 'success');
+                        }
+                    } catch (e) { }
+                }, 1000);
+
+            } catch (e) {
+                showMessage('Failed to start login: ' + e.message, 'error');
+            }
+        }
+
+        async function searchSpotify() {
+            const query = document.getElementById('spotify-search-input').value;
+            if (!query) return;
+
+            const resultsDiv = document.getElementById('spotify-results');
+            resultsDiv.innerHTML = '<p style="color: #888; text-align: center;">Searching...</p>';
+
+            try {
+                const res = await fetch(`${API_BASE}/api/spotify/search?q=${encodeURIComponent(query)}`);
+                const data = await res.json();
+
+                resultsDiv.innerHTML = '';
+
+                if (data.tracks && data.tracks.items) {
+                    data.tracks.items.forEach(track => {
+                        const div = document.createElement('div');
+                        div.className = 'spotify-result';
+                        div.onclick = () => selectSpotifyTrack(track);
+
+                        const imgUrl = track.album.images[0] ? track.album.images[0].url : '';
+
+                        div.innerHTML = `
+                            <img src="${imgUrl}" alt="Album Art">
+                            <div class="spotify-info">
+                                <div class="spotify-title">${track.name}</div>
+                                <div class="spotify-artist">${track.artists.map(a => a.name).join(', ')}</div>
+                            </div>
+                            <button class="control-btn start-btn" style="padding: 5px 15px; font-size: 0.8rem;">Dance!</button>
+                        `;
+                        resultsDiv.appendChild(div);
+                    });
+                } else {
+                    resultsDiv.innerHTML = '<p style="color: #888; text-align: center;">No results found.</p>';
+                }
+            } catch (e) {
+                resultsDiv.innerHTML = `<p style="color: var(--pink); text-align: center;">Error: ${e.message}</p>`;
+            }
+        }
+
+        async function selectSpotifyTrack(track) {
+            if (selectedMode !== 'connected_choreographer') {
+                selectMode('connected_choreographer');
+            }
+
+            try {
+                const statusRes = await fetch(`${API_BASE}/api/status`);
+                const statusData = await statusRes.json();
+
+                if (statusData.current_mode !== 'connected_choreographer') {
+                    await fetch(`${API_BASE}/api/mode/connected_choreographer/start`, { method: 'POST' });
+                }
+
+                const res = await fetch(`${API_BASE}/api/mode/connected_choreographer/track`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(track)
+                });
+
+                if (res.ok) {
+                    showMessage(`Selected: ${track.name}. Downloading & Analyzing...`, 'success');
+                } else {
+                    const error = await res.json();
+                    throw new Error(error.detail || 'Failed to set track');
+                }
+            } catch (e) {
+                showMessage(e.message, 'error');
+            }
+        }
+
+        async function stopSpotifyPlayback() {
+            // Gracefully stop - works whether or not anything is playing
+            try {
+                const res = await fetch(`${API_BASE}/api/mode/stop`, { method: 'POST' });
+                if (res.ok) {
+                    const data = await res.json();
+                    // Don't show message if already stopped - just graceful dismissal
+                    if (data.status !== 'already_stopped') {
+                        showMessage('Playback stopped', 'success');
+                    }
+                }
+            } catch (e) {
+                // Silently ignore errors - graceful dismissal
+                console.log('Stop playback:', e.message);
+            }
+        }
+
+        // Update slider display
+        function updateSlider(name, value) {
+            const displayMap = {
+                'intensity': 'intensity-value',
+                'smoothing': 'smoothing-value',
+                'z_threshold': 'z-threshold-value',
+                'max_pitch_at_low_z': 'max-pitch-value'
+            };
+            document.getElementById(displayMap[name]).textContent = parseFloat(value).toFixed(3);
+        }
+
+        // Apply safety config
+        async function applySafetyConfig() {
+            const config = {
+                intensity: parseFloat(document.getElementById('intensity-slider').value),
+                smoothing_alpha: parseFloat(document.getElementById('smoothing-slider').value),
+                z_threshold: parseFloat(document.getElementById('z-threshold-slider').value),
+                max_pitch_at_low_z: parseFloat(document.getElementById('max-pitch-slider').value)
+            };
+
+            try {
+                const response = await fetch(`${API_BASE}/api/safety`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+
+                if (response.ok) {
+                    showMessage('Safety config updated', 'success');
+                } else {
+                    showMessage('Failed to update config', 'error');
+                }
+            } catch (error) {
+                showMessage('Connection error: ' + error.message, 'error');
+            }
+        }
+
+        // Show message
+        function showMessage(text, type) {
+            const msg = document.getElementById('message');
+            msg.textContent = text;
+            msg.className = 'message ' + type;
+
+            setTimeout(() => {
+                msg.className = 'message';
+            }, 3000);
+        }
+
+        // Poll status
+        async function pollStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/api/status`);
+                const data = await response.json();
+                updateStatusDisplay(data);
+            } catch (error) {
+                document.getElementById('connection-status').textContent = 'Error';
+                document.getElementById('connection-status').className = 'status-value disconnected';
+            }
+        }
+
+        // Load current safety config
+        async function loadSafetyConfig() {
+            try {
+                const response = await fetch(`${API_BASE}/api/safety`);
+                const config = await response.json();
+
+                if (config.intensity !== undefined) {
+                    document.getElementById('intensity-slider').value = config.intensity;
+                    document.getElementById('intensity-value').textContent = config.intensity.toFixed(3);
+                }
+                if (config.smoothing_alpha !== undefined) {
+                    document.getElementById('smoothing-slider').value = config.smoothing_alpha;
+                    document.getElementById('smoothing-value').textContent = config.smoothing_alpha.toFixed(3);
+                }
+                if (config.z_threshold !== undefined) {
+                    document.getElementById('z-threshold-slider').value = config.z_threshold;
+                    document.getElementById('z-threshold-value').textContent = config.z_threshold.toFixed(3);
+                }
+                if (config.max_pitch_at_low_z !== undefined) {
+                    document.getElementById('max-pitch-slider').value = config.max_pitch_at_low_z;
+                    document.getElementById('max-pitch-value').textContent = config.max_pitch_at_low_z.toFixed(3);
+                }
+            } catch (error) {
+                console.error('Failed to load safety config:', error);
+            }
+        }
+
+        // WebSocket connection
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/api/ws`;
+
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                console.log('WebSocket connected');
+                if (statusInterval) {
+                    clearInterval(statusInterval);
+                    statusInterval = null;
+                }
+            };
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                updateStatusDisplay(data);
+            };
+
+            ws.onerror = (error) => {
+                console.log('WebSocket error, falling back to polling');
+                ws.close();
+            };
+
+            ws.onclose = () => {
+                console.log('WebSocket closed, falling back to polling');
+                ws = null;
+                if (!statusInterval) {
+                    statusInterval = setInterval(pollStatus, 500);
+                }
+                setTimeout(connectWebSocket, 5000);
+            };
+        }
+
+        // Update status display from data object
+        function updateStatusDisplay(data) {
+            const connEl = document.getElementById('connection-status');
+            connEl.textContent = data.connected ? 'OK' : 'OFF';
+            connEl.className = 'status-value ' + (data.connected ? 'connected' : 'disconnected');
+
+            document.getElementById('current-mode').textContent = data.current_mode || '-';
+
+            if (data.mode_status) {
+                const status = data.mode_status;
+
+                document.getElementById('current-state').textContent = status.state || 'Idle';
+
+                let bpmText = '-';
+                if (status.bpm) {
+                    bpmText = `${status.bpm.toFixed(1)}`;
+                }
+                if (status.current_beat !== undefined && status.total_beats) {
+                    bpmText = `${status.current_beat}/${status.total_beats}`;
+                }
+                if (status.beat_count !== undefined) {
+                    bpmText = `Beat ${status.beat_count + 1}`;
+                }
+                document.getElementById('bpm-display').textContent = bpmText;
+
+                const progress = (status.progress || 0) * 100;
+                document.getElementById('progress-fill').style.width = progress + '%';
+
+                // Show save button if Live Groove is calibrated
+                const saveBtn = document.getElementById('save-profile-btn');
+                if (data.current_mode === 'live_groove' && status.calibrated) {
+                    saveBtn.style.display = 'block';
+                } else {
+                    saveBtn.style.display = 'none';
+                }
+
+            } else {
+                document.getElementById('current-state').textContent = 'Idle';
+                document.getElementById('bpm-display').textContent = '-';
+                document.getElementById('progress-fill').style.width = '0%';
+                document.getElementById('save-profile-btn').style.display = 'none';
+            }
+        }
+
+        // Move dampening state
+        let moveValues = {};
+        let mirrorValues = {};
+        let mirrorableMoves = [];
+
+        // Load moves from API
+        async function loadMoves() {
+            try {
+                const [movesRes, mirrorRes] = await Promise.all([
+                    fetch(`${API_BASE}/api/moves`),
+                    fetch(`${API_BASE}/api/moves/mirror`)
+                ]);
+
+                const movesData = await movesRes.json();
+                const mirrorData = await mirrorRes.json();
+
+                moveValues = movesData.moves || {};
+                mirrorValues = mirrorData.mirror || {};
+                mirrorableMoves = mirrorData.mirrorable || [];
+
+                renderMoves();
+            } catch (error) {
+                console.error('Failed to load moves:', error);
+                document.getElementById('moves-grid').innerHTML =
+                    '<p style="color: var(--pink);">Failed to load moves</p>';
+            }
+        }
+
+        // Render move sliders in grid
+        function renderMoves() {
+            const container = document.getElementById('moves-grid');
+            const sortedMoves = Object.keys(moveValues).sort();
+
+            if (sortedMoves.length === 0) {
+                container.innerHTML = '<p style="color: #666;">No moves available</p>';
+                return;
+            }
+
+            container.innerHTML = sortedMoves.map(move => {
+                const isMirrorable = mirrorableMoves.includes(move);
+                const isMirrored = mirrorValues[move] || false;
+
+                return `
+                    <div class="move-item">
+                        <div class="move-header">
+                            <span class="move-name" title="${move}">${move}</span>
+                            <span class="move-value" id="move-val-${move}">${moveValues[move].toFixed(2)}</span>
+                        </div>
+                        <input type="range" class="move-slider"
+                            data-move="${move}"
+                            min="0" max="2" step="0.05"
+                            value="${moveValues[move]}"
+                            oninput="updateMoveValue('${move}', this.value)">
+                        ${isMirrorable ? `
+                            <div class="mirror-toggle">
+                                <label>
+                                    <input type="checkbox" ${isMirrored ? 'checked' : ''}
+                                        onchange="toggleMirror('${move}', this.checked)">
+                                    <span>+ Mirrored</span>
+                                </label>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Update move value display
+        function updateMoveValue(move, value) {
+            moveValues[move] = parseFloat(value);
+            document.getElementById(`move-val-${move}`).textContent = parseFloat(value).toFixed(2);
+        }
+
+        // Toggle mirror for a move
+        function toggleMirror(move, checked) {
+            mirrorValues[move] = checked;
+        }
+
+        // Apply all move changes
+        async function applyMoves() {
+            try {
+                const [dampeningRes, mirrorRes] = await Promise.all([
+                    fetch(`${API_BASE}/api/moves`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(moveValues)
+                    }),
+                    fetch(`${API_BASE}/api/moves/mirror`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(mirrorValues)
+                    })
+                ]);
+
+                if (dampeningRes.ok && mirrorRes.ok) {
+                    showMessage('Move settings saved', 'success');
+                } else {
+                    showMessage('Failed to update moves', 'error');
+                }
+            } catch (error) {
+                showMessage('Connection error: ' + error.message, 'error');
+            }
+        }
+
+        // Reset moves to defaults
+        async function resetMoves() {
+            try {
+                const [dampeningRes, mirrorRes] = await Promise.all([
+                    fetch(`${API_BASE}/api/moves/reset`, { method: 'POST' }),
+                    fetch(`${API_BASE}/api/moves/mirror/reset`, { method: 'POST' })
+                ]);
+
+                if (dampeningRes.ok && mirrorRes.ok) {
+                    const dampeningData = await dampeningRes.json();
+                    const mirrorData = await mirrorRes.json();
+                    moveValues = dampeningData.moves || {};
+                    mirrorValues = mirrorData.mirror || {};
+                    renderMoves();
+                    showMessage('Moves reset to defaults', 'success');
+                } else {
+                    showMessage('Failed to reset moves', 'error');
+                }
+            } catch (error) {
+                showMessage('Connection error: ' + error.message, 'error');
+            }
+        }
+
+        // Mode settings state
+        let modeSettings = {
+            live_groove: { intensity: 1.0, volume_gate_threshold: 0.005 },
+            connected_choreographer: {
+                amplitude_scale: 0.5,
+                interpolation_alpha: 0.3,
+                antenna_energy_threshold: 0.25,
+                antenna_gain: 20.0,
+                antenna_sensitivity: 1.0,
+                antenna_amplitude: 3.15
+            },
+            bluetooth_streamer: { max_yaw: 0.75, max_pitch: 0.30, max_z: 0.015 }
+        };
+
+        // Load mode settings from API
+        async function loadModeSettings() {
+            try {
+                const response = await fetch(`${API_BASE}/api/mode-settings`);
+                const data = await response.json();
+                modeSettings = data.settings || modeSettings;
+                renderModeSettings();
+            } catch (error) {
+                console.error('Failed to load mode settings:', error);
+            }
+        }
+
+        // Render mode settings to sliders
+        function renderModeSettings() {
+            // Live Groove
+            if (modeSettings.live_groove) {
+                const intensity = modeSettings.live_groove.intensity || 1.0;
+                document.getElementById('mode-live_groove-intensity-slider').value = intensity;
+                document.getElementById('mode-live_groove-intensity-value').textContent = intensity.toFixed(2);
+
+                const volThreshold = modeSettings.live_groove.volume_gate_threshold || 0.005;
+                document.getElementById('mode-live_groove-volume_gate_threshold-slider').value = volThreshold;
+                document.getElementById('mode-live_groove-volume_gate_threshold-value').textContent = volThreshold.toFixed(3);
+            }
+
+            // Connected Choreographer
+            if (modeSettings.connected_choreographer) {
+                const s = modeSettings.connected_choreographer;
+                const ampScale = s.amplitude_scale || 0.5;
+                const interpAlpha = s.interpolation_alpha || 0.3;
+                const antennaThreshold = s.antenna_energy_threshold || 0.25;
+                const antennaGain = s.antenna_gain || 20.0;
+                const antennaSensitivity = s.antenna_sensitivity || 1.0;
+                const antennaAmplitude = s.antenna_amplitude || 3.15;
+
+                document.getElementById('mode-connected_choreographer-amplitude_scale-slider').value = ampScale;
+                document.getElementById('mode-connected_choreographer-amplitude_scale-value').textContent = ampScale.toFixed(2);
+                document.getElementById('mode-connected_choreographer-interpolation_alpha-slider').value = interpAlpha;
+                document.getElementById('mode-connected_choreographer-interpolation_alpha-value').textContent = interpAlpha.toFixed(2);
+                document.getElementById('mode-connected_choreographer-antenna_energy_threshold-slider').value = antennaThreshold;
+                document.getElementById('mode-connected_choreographer-antenna_energy_threshold-value').textContent = antennaThreshold.toFixed(2);
+                document.getElementById('mode-connected_choreographer-antenna_gain-slider').value = antennaGain;
+                document.getElementById('mode-connected_choreographer-antenna_gain-value').textContent = antennaGain.toFixed(1);
+                document.getElementById('mode-connected_choreographer-antenna_sensitivity-slider').value = antennaSensitivity;
+                document.getElementById('mode-connected_choreographer-antenna_sensitivity-value').textContent = antennaSensitivity.toFixed(2);
+                document.getElementById('mode-connected_choreographer-antenna_amplitude-slider').value = antennaAmplitude;
+                document.getElementById('mode-connected_choreographer-antenna_amplitude-value').textContent = antennaAmplitude.toFixed(2);
+            }
+
+            // Bluetooth Streamer
+            if (modeSettings.bluetooth_streamer) {
+                const maxYaw = modeSettings.bluetooth_streamer.max_yaw || 0.75;
+                const maxPitch = modeSettings.bluetooth_streamer.max_pitch || 0.30;
+                const maxZ = modeSettings.bluetooth_streamer.max_z || 0.015;
+                document.getElementById('mode-bluetooth_streamer-max_yaw-slider').value = maxYaw;
+                document.getElementById('mode-bluetooth_streamer-max_yaw-value').textContent = maxYaw.toFixed(2);
+                document.getElementById('mode-bluetooth_streamer-max_pitch-slider').value = maxPitch;
+                document.getElementById('mode-bluetooth_streamer-max_pitch-value').textContent = maxPitch.toFixed(2);
+                document.getElementById('mode-bluetooth_streamer-max_z-slider').value = maxZ;
+                document.getElementById('mode-bluetooth_streamer-max_z-value').textContent = maxZ.toFixed(3);
+            }
+        }
+
+        // Update mode slider display and auto-apply
+        function updateModeSlider(mode, setting, value) {
+            // Mode is now the full name like 'live_groove', 'bluetooth_streamer', etc.
+            if (!modeSettings[mode]) modeSettings[mode] = {};
+            modeSettings[mode][setting] = parseFloat(value);
+
+            const decimals = setting === 'max_z' || setting === 'volume_gate_threshold' ? 3 : 2;
+            document.getElementById(`mode-${mode}-${setting}-value`).textContent =
+                parseFloat(value).toFixed(decimals);
+
+            // Auto-apply mode settings on change
+            applyModeSettingSingle(mode, setting, parseFloat(value));
+        }
+
+        // Apply a single mode setting
+        async function applyModeSettingSingle(mode, setting, value) {
+            try {
+                await fetch(`${API_BASE}/api/mode-settings/${mode}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ [setting]: value })
+                });
+            } catch (error) {
+                console.error('Failed to apply setting:', error);
+            }
+        }
+
+        // Profile Management
+        let profileExists = false;
+
+        async function loadProfileStatus() {
+            try {
+                const res = await fetch(`${API_BASE}/api/profile/status`);
+                const data = await res.json();
+
+                const loadRadio = document.getElementById('load-profile-radio');
+                const loadText = document.getElementById('load-profile-text');
+                const loadLabel = document.getElementById('load-profile-label');
+                const profileStatus = document.getElementById('profile-status');
+
+                profileExists = data.exists;
+
+                if (data.exists && !data.error) {
+                    // Format the date nicely
+                    let dateStr = 'unknown time';
+                    if (data.created && data.created !== 'unknown') {
+                        const date = new Date(data.created);
+                        dateStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    }
+
+                    loadRadio.disabled = false;
+                    loadLabel.classList.remove('disabled');
+                    loadText.textContent = 'Load saved profile';
+                    profileStatus.innerHTML = `<span style="color: var(--light-green);">&#10003;</span> Profile saved: ${dateStr}`;
+                } else {
+                    loadRadio.disabled = true;
+                    loadLabel.classList.add('disabled');
+                    loadText.textContent = 'Load saved profile (none found)';
+                    profileStatus.textContent = 'No saved profile - calibrate first';
+                }
+            } catch (error) {
+                console.error('Failed to load profile status:', error);
+            }
+        }
+
+        async function saveProfile() {
+            const saveBtn = document.getElementById('save-profile-btn');
+            const originalText = saveBtn.textContent;
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Saving...';
+
+            try {
+                const res = await fetch(`${API_BASE}/api/profile/save`, {
+                    method: 'POST'
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    showMessage('Profile saved successfully!', 'success');
+                    // Refresh profile status to update the load option
+                    await loadProfileStatus();
+                } else {
+                    const err = await res.json();
+                    showMessage(err.detail || 'Failed to save profile', 'error');
+                }
+            } catch (error) {
+                showMessage('Error saving profile: ' + error.message, 'error');
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.textContent = originalText;
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadSafetyConfig();
+            loadModeSettings();
+            loadMoves();
+            loadProfileStatus();
+            connectWebSocket();
+            pollStatus();
+            statusInterval = setInterval(pollStatus, 500);
+        });
+    </script>
+</body>
+
+</html>

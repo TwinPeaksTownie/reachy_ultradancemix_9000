@@ -1,0 +1,19 @@
+{
+  "live_groove": {
+    "intensity": 1.85,
+    "volume_gate_threshold": 0.004
+  },
+  "connected_choreographer": {
+    "amplitude_scale": 0.45,
+    "interpolation_alpha": 0.3,
+    "antenna_energy_threshold": 0.26,
+    "antenna_sensitivity": 0.6,
+    "antenna_amplitude": 2.2,
+    "antenna_gain": 4.0
+  },
+  "bluetooth_streamer": {
+    "max_yaw": 0.75,
+    "max_pitch": 0.3,
+    "max_z": 0.015
+  }
+}
