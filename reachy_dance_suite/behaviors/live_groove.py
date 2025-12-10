@@ -24,6 +24,7 @@ import json
 import random
 import threading
 import time
+from datetime import datetime
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional
@@ -91,8 +92,8 @@ class LiveGrooveConfig:
     silence_tmo: float = 2.0
     volume_gate_threshold: float = 0.005  # Lowered from 0.008 for better sensitivity
     music_confidence_ratio: float = 1.5  # Signal must be 1.5x threshold to dance
-    beats_per_sequence: int = 8
-    min_breathing_between_moves: float = 0.2
+    beats_per_sequence: int = 4
+    min_breathing_between_moves: float = 0
     unstable_periods_before_stop: int = 4
 
     # Neutral pose
@@ -492,6 +493,30 @@ class LiveGroove(DanceMode):
         print(f"\n{'='*60}")
         print("All calibration phases complete!")
         print(f"{'='*60}\n")
+        
+        # Auto-Save Profile
+        try:
+            silence_rms = float(np.sqrt(np.mean(self.silence_noise_profile**2)))
+            breathing_rms = float(np.sqrt(np.mean(self.breathing_noise_profile**2)))
+            dance_rms = float(np.sqrt(np.mean(self.dance_noise_profile**2))) if self.dance_noise_profile is not None else 0.0
+
+            metadata = {
+                "created": datetime.now().isoformat(),
+                "silence_rms": silence_rms,
+                "breathing_rms": breathing_rms,
+                "dance_rms": dance_rms,
+            }
+
+            np.savez(
+                self.DEFAULT_PROFILE_PATH,
+                silence_profile=self.silence_noise_profile,
+                breathing_profile=self.breathing_noise_profile,
+                dance_profile=self.dance_noise_profile if self.dance_noise_profile is not None else self.breathing_noise_profile,
+                metadata=json.dumps(metadata),
+            )
+            print(f"[{self.MODE_NAME}] Auto-saved calibration profile to {self.DEFAULT_PROFILE_PATH}")
+        except Exception as e:
+            print(f"[{self.MODE_NAME}] WARNING: Failed to auto-save profile: {e}")
 
     def _audio_capture_thread(
         self,

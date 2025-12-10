@@ -1,0 +1,24 @@
+# Reachy Dance Suite - Requirements
+# Python 3.10+ recommended
+
+# Web Framework
+fastapi>=0.104.0
+uvicorn>=0.24.0
+pydantic>=2.0.0
+
+# Audio Processing
+librosa>=0.10.0
+numpy>=1.24.0
+pyaudio>=0.2.13
+soundfile>=0.12.0
+
+# HTTP Client (Spotify API)
+httpx>=0.25.0
+
+# Reachy Mini SDK
+# Install from repo or: pip install reachy_mini
+reachy-mini
+
+# Dance Moves Library (Hugging Face)
+# pip install git+https://github.com/pollen-robotics/reachy-mini-dances-library.git
+reachy-mini-dances-library

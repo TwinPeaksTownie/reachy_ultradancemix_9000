@@ -16,6 +16,7 @@ import numpy as np
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -101,6 +102,15 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Enable CORS for iOS app access
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins for local development
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 # Pydantic models for API
 class SafetyConfigUpdate(BaseModel):
@@ -121,6 +131,7 @@ class ModeStartRequest(BaseModel):
 
 # Static file path
 STATIC_DIR = Path(__file__).parent / "static"
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
 # API Endpoints

@@ -16,6 +16,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import logging
+import random
 import subprocess
 import threading
 import time
@@ -180,6 +182,29 @@ EIGHT_BEAT_SEQUENCES = {
     ],
 }
 
+CHEESY_MOVIE_QUOTES = [
+    ("Step Up: Revolution", "A profound meditation on the futility of art in a capitalist hellscape where corporate greed consumes even the purest expressions of rhythmic rebellion."),
+    ("Dirty Dancing: Havana Nights", "A tragic allegory for the inevitable decay of passion under the crushing weight of geopolitical conflict and the meaningless passage of time."),
+    ("Honey 2", "A grim reminder that individual talent is ultimately meaningless in a society structured to exploit the dreams of the disenfranchised for fleeting entertainment."),
+    ("StreetDance 3D", "An existential nightmare exploring the hollowness of spectacle, where depth is simulated but connection remains perpetually out of reach."),
+    ("Bring It On: Fight to the Finish", "A harrowing depicition of the tribalistic nature of humanity, proving that even in organized sport, we are but wolves tearing at each other's throats."),
+    ("Save the Last Dance 2", "A bleak examination of the fallacy of second chances, illustrating that past traumas are not overcome, but merely buried beneath new, equally fragile illusions."),
+    ("Burlesque", "A garish display of desperate people clinging to the wreckage of a dying industry, singing their sorrows to an audience that will never truly know them."),
+    ("Center Stage: Turn It Up", "A crushing realization that ambition is a poison, turning friends into rivals and the joy of movement into a sterile, competitive commodity."),
+    ("High Strung", "A dissonant symphony of shattered expectations, where the harmony of music and dance only serves to highlight the discordant chaos of modern existence."),
+    ("Make It Happen", "A cruel joke of a title for a story about the paralyzing fear of failure and the quiet desperation of settling for a life you never wanted."),
+    ("Flashdance", "A solitary struggle against the industrial machine, where welding sparks are the only warmth in a cold, unfeeling world that demands your labor and compliant rhythm."),
+    ("Footloose (2011)", "A futile rage against authority that ultimately reveals rebellion as a temporary phase before inevitable assimilation into the oppressive societal norm."),
+    ("Battle of the Year", "A portrayal of international cooperation that dissolves into petty egoism, suggesting that unity is an impossible dream in a fractured, competitive world."),
+    ("Coyote Ugly", "A stark look at the commodification of female agency, where dreams of songwriting are drowned in alcohol and the male gaze on a sticky bar top."),
+    ("Magic Mike XXL", "A road trip into the void, where the performance of masculinity masks a deep, aching loneliness that no amount of glitter or gyrations can heal."),
+    ("Pitch Perfect 2", "A cacophony of forced cheer masking the terror of obsolescence, as a group of aging performers desperately clings to relevance in a world moving on without them."),
+    ("Fame (2009)", "A harsh lesson that fame is not a ladder to the stars, but a meat grinder that chews up the young and hopeful, leaving only broken spirits in its wake."),
+    ("You Got Served", "A brutal treatise on the transactional nature of respect, where dignity is won or lost on a dance floor that cares nothing for the souls leaving their sweat upon it."),
+    ("Work It", "An ironic celebration of mediocrity, suggesting that in a world devoid of true merit, faking it until you make it is the only survival strategy left."),
+    ("Feel the Beat", "A depressing saga of a fallen star forced to return to the mediocrity she escaped, finding not redemption, but the suffocating embrace of small-town stagnation.")
+]
+
 
 @dataclass
 class SongAnalysis:
@@ -235,9 +260,10 @@ class ConnectedChoreographerConfig:
 class YouTubeDownloader:
     """Download audio from YouTube using yt-dlp."""
 
-    def __init__(self, download_dir: str = "downloads"):
+    def __init__(self, download_dir: str = "downloads", log_callback=None):
         self.download_dir = Path(download_dir)
         self.download_dir.mkdir(exist_ok=True)
+        self.log = log_callback if log_callback else lambda x: None
 
     def download_audio(self, url: str) -> Optional[str]:
         """Download audio from YouTube URL or search query.
@@ -286,6 +312,7 @@ class YouTubeDownloader:
 
                 video_title = info.get("title", "Unknown")
                 logger.info(f"[ConnectedChoreographer] Downloading: {video_title}")
+                self.log(f"Downloading: {video_title}")
 
                 ydl.download([url])
 
@@ -303,10 +330,13 @@ class YouTubeDownloader:
 
 class SongAnalyzer:
     """Analyze audio files using Librosa."""
+    def __init__(self, log_callback=None):
+        self.log = log_callback if log_callback else lambda x: None
 
     def analyze(self, audio_path: str) -> SongAnalysis:
         """Perform full Librosa analysis of audio file."""
         logger.info(f"[ConnectedChoreographer] Analyzing: {audio_path}")
+        self.log(f"Analyzing audio: {Path(audio_path).name}")
 
         # Load audio
         y, sr = librosa.load(audio_path)
@@ -329,6 +359,7 @@ class SongAnalyzer:
                 beat_times = np.concatenate([beat_times, extended])
 
         logger.info(f"[ConnectedChoreographer] Detected {len(beat_times)} beats at {tempo_val:.1f} BPM")
+        self.log(f"Detected {len(beat_times)} beats at {tempo_val:.1f} BPM")
 
         # RMS energy
         rms = librosa.feature.rms(y=y)[0]
@@ -431,6 +462,7 @@ class ConnectedChoreographer(DanceMode):
         self.stop_event = threading.Event()
         self.dance_thread: Optional[threading.Thread] = None
         self.audio_process: Optional[subprocess.Popen] = None
+        self.prep_task: Optional[asyncio.Task] = None
 
         # Sequence state
         self.current_sequence: list[dict] = []
@@ -456,7 +488,17 @@ class ConnectedChoreographer(DanceMode):
             "is_breathing": False,
             "source": None,  # "youtube" or "spotify"
             "track_info": None,
+            "logs": [],
         }
+
+    def _log(self, message: str) -> None:
+        """Add a log message to the status."""
+        logger.info(f"[{self.MODE_NAME}] {message}")
+        timestamp = time.strftime("%H:%M:%S")
+        self._status["logs"].append(f"[{timestamp}] {message}")
+        # Keep only last 50 logs
+        if len(self._status["logs"]) > 50:
+            self._status["logs"] = self._status["logs"][-50:]
 
     def _load_settings(self) -> None:
         """Load settings from mode_settings module."""
@@ -482,7 +524,7 @@ class ConnectedChoreographer(DanceMode):
         self.use_spotify_playback = False
         self._status["source"] = "youtube"
         self._status["track_info"] = {"url": url}
-        logger.info(f"[{self.MODE_NAME}] Set YouTube URL: {url}")
+        self._log(f"Set YouTube URL: {url}")
 
     async def set_spotify_track(self, track_info: dict) -> None:
         """Set Spotify track as audio source."""
@@ -500,7 +542,7 @@ class ConnectedChoreographer(DanceMode):
             "image": track_info["album"]["images"][0]["url"] if track_info["album"]["images"] else None,
         }
 
-        logger.info(f"[{self.MODE_NAME}] Set Spotify track: {artist} - {name}")
+        self._log(f"Set Spotify track: {artist} - {name}")
 
     def _get_download_url(self) -> Optional[str]:
         """Get the URL to download audio from."""
@@ -514,56 +556,98 @@ class ConnectedChoreographer(DanceMode):
         return None
 
     async def start(self) -> None:
-        """Start the choreographer."""
+        """Start the choreographer (non-blocking)."""
         if self.running:
             return
 
         download_url = self._get_download_url()
         if not download_url:
-            logger.error(f"[{self.MODE_NAME}] No audio source set")
-            self._status["state"] = "error"
+            logger.info(f"[{self.MODE_NAME}] Started without audio source - waiting for selection")
+            self._log("Waiting for audio selection...")
             return
 
-        logger.info(f"[{self.MODE_NAME}] Starting with source: {download_url}")
-        self._status["state"] = "downloading"
-
-        # Download audio
-        downloader = YouTubeDownloader(self.config.download_dir)
-        audio_path = downloader.download_audio(download_url)
-
-        if not audio_path:
-            logger.error(f"[{self.MODE_NAME}] Download failed")
-            self._status["state"] = "error"
-            return
-
-        # Analyze audio
-        self._status["state"] = "analyzing"
-        analyzer = SongAnalyzer()
-        self.analysis = analyzer.analyze(audio_path)
-
-        # Log envelope stats
-        if len(self.analysis.energy_envelope) > 0:
-            rms = self.analysis.energy_envelope
-            logger.info(f"[{self.MODE_NAME}] RMS Range: {np.min(rms):.4f} - {np.max(rms):.4f}")
-
-        self._status["tempo"] = self.analysis.tempo
-        self._status["total_beats"] = len(self.analysis.beat_times)
-
-        # Check Spotify playback if this is a Spotify track
-        self.use_spotify_playback = False
-        if self.spotify_track and self.spotify:
-            await self._try_spotify_playback()
-
-        # Start playback
-        self.stop_event.clear()
+        # Initialize status immediately
         self.running = True
-
-        self.dance_thread = threading.Thread(target=self._dance_loop, daemon=True)
-        self.dance_thread.start()
-
         self._status["running"] = True
-        self._status["state"] = "dancing"
-        logger.info(f"[{self.MODE_NAME}] Started - dancing to {self.analysis.tempo:.1f} BPM")
+        self._status["state"] = "preparing"
+        logger.info(f"[{self.MODE_NAME}] Starting preparation for: {download_url}")
+        
+        # Start background preparation task
+        self.prep_task = asyncio.create_task(self._prepare_and_start(download_url))
+
+    async def _prepare_and_start(self, download_url: str) -> None:
+        """Background task to download, analyze, and start dancing."""
+        try:
+            # 1. Download
+            source_name = "Spotify" if self.spotify_track else "YouTube"
+            self._log(f"Retreiving audio from {source_name}...") 
+            
+            # Run blocking download in executor
+            loop = asyncio.get_running_loop()
+            downloader = YouTubeDownloader(self.config.download_dir, log_callback=self._log)
+            # Use run_in_executor for blocking I/O
+            audio_path = await loop.run_in_executor(None, downloader.download_audio, download_url)
+
+            if not audio_path:
+                logger.error(f"[{self.MODE_NAME}] Download failed")
+                self._log("Download failed")
+                self._status["state"] = "error"
+                self.running = False
+                self._status["running"] = False
+                return
+
+            self._log("Audio Received")
+
+            # 2. Analyze
+            self._status["state"] = "analyzing"
+            self._log("Analyzing Beats...")
+            
+            # Run blocking analysis in executor
+            analyzer = SongAnalyzer(log_callback=self._log)
+            self.analysis = await loop.run_in_executor(None, analyzer.analyze, audio_path)
+
+            # Log envelope stats
+            if len(self.analysis.energy_envelope) > 0:
+                rms = self.analysis.energy_envelope
+                logger.info(f"[{self.MODE_NAME}] RMS Range: {np.min(rms):.4f} - {np.max(rms):.4f}")
+
+            self._status["tempo"] = self.analysis.tempo
+            self._status["total_beats"] = len(self.analysis.beat_times)
+
+            # 3. Plan / Hype
+            self._log("Planning moves that will blow your mind")
+            await asyncio.sleep(1.5) # Dramatic pause
+
+            # Check Spotify playback if this is a Spotify track
+            self.use_spotify_playback = False
+            if self.spotify_track and self.spotify:
+                await self._try_spotify_playback()
+
+            # 4. Start Dance Thread
+            if not self.running: # Check if stopped during prep
+                return
+                
+            self.stop_event.clear()
+            self.dance_thread = threading.Thread(target=self._dance_loop, daemon=True)
+            self.dance_thread.start()
+
+            self._status["state"] = "dancing"
+            
+            # Display Cheesy Movie Quote
+            movie, desc = random.choice(CHEESY_MOVIE_QUOTES)
+            self._log(f"Playing: {movie}")
+            self._log(desc)
+            
+            logger.info(f"[{self.MODE_NAME}] Started - dancing to {self.analysis.tempo:.1f} BPM")
+            
+        except Exception as e:
+            logger.error(f"[{self.MODE_NAME}] Preparation failed: {e}")
+            self._log(f"Error: {e}")
+            self._status["state"] = "error"
+            self.running = False
+            self._status["running"] = False
+            import traceback
+            traceback.print_exc()
 
     async def _try_spotify_playback(self) -> None:
         """Try to start Spotify playback on an available device."""
@@ -583,8 +667,10 @@ class ConnectedChoreographer(DanceMode):
                     device_id=active_device["id"],
                 )
                 self.use_spotify_playback = True
+                self._log("Spotify playback started")
                 logger.info(f"[{self.MODE_NAME}] Spotify playback started")
             else:
+                self._log("No Spotify devices - using local audio")
                 logger.info(f"[{self.MODE_NAME}] No Spotify devices - using local audio")
         except Exception as e:
             logger.warning(f"[{self.MODE_NAME}] Spotify playback failed: {e} - using local audio")
@@ -597,6 +683,15 @@ class ConnectedChoreographer(DanceMode):
         logger.info(f"[{self.MODE_NAME}] Stopping...")
         self.running = False
         self.stop_event.set()
+
+        # Cancel prep task if running
+        if self.prep_task and not self.prep_task.done():
+            self.prep_task.cancel()
+            try:
+                await self.prep_task
+            except asyncio.CancelledError:
+                pass
+            self.prep_task = None
 
         # Stop audio
         if self.use_spotify_playback and self.spotify:
@@ -625,6 +720,7 @@ class ConnectedChoreographer(DanceMode):
 
         self._status["running"] = False
         self._status["state"] = "idle"
+        self._log("Stopped")
         logger.info(f"[{self.MODE_NAME}] Stopped")
 
     def get_status(self) -> dict[str, Any]:
