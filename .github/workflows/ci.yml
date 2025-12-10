@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Test on ${{ matrix.os }} (Python ${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      # Install system dependencies for PyAudio
+      - name: Install PortAudio (Ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y portaudio19-dev python3-pyaudio ffmpeg
+
+      - name: Install PortAudio (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install portaudio ffmpeg
+
+      - name: Install PortAudio (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          choco install ffmpeg -y
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+        continue-on-error: true
+
+      # PyAudio wheel for Windows (pre-built, fallback)
+      - name: Install PyAudio wheel (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          pip install pipwin
+          pipwin install pyaudio
+        continue-on-error: true
+
+      # Install project-specific packages (if available from PyPI or local)
+      - name: Install reachy packages
+        run: |
+          pip install reachy-mini || echo "reachy-mini not available on PyPI"
+          pip install reachy-mini-dances-library || echo "reachy-mini-dances-library not available on PyPI"
+        continue-on-error: true
+
+      - name: Syntax check Python files
+        run: |
+          python -m py_compile reachy_dance_suite/app.py
+          python -m py_compile reachy_dance_suite/config.py
+          python -m py_compile reachy_dance_suite/behaviors/base.py
+          python -m py_compile reachy_dance_suite/behaviors/live_groove.py
+          python -m py_compile reachy_dance_suite/behaviors/bluetooth_streamer.py
+          python -m py_compile reachy_dance_suite/behaviors/connected_choreographer.py
+          python -m py_compile reachy_dance_suite/core/audio_stream.py
+          python -m py_compile reachy_dance_suite/core/safety_mixer.py
+          python -m py_compile reachy_dance_suite/spotify/client.py
+
