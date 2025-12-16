@@ -28,3 +28,11 @@ Thumbs.db
 B-mini-yt-mcp
 C-audio_reactor
 A-livegroovecurrent/
+
+# Virtual environment
+.venv/
+venv/
+
+# YouTube Music tokens
+.ytmusic_oauth.json
+.ytmusic_cookies.txt

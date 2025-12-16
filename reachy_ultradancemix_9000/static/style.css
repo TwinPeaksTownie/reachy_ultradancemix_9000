@@ -9,10 +9,8 @@
     --dark-bg: #1a1a2e;
     --card-bg: #252540;
     --card-bg-hover: #2d2d4d;
-    --spotify-green: #1DB954;
-    --youtube-red: #FF0000;
-    --spotify-bg: rgba(29, 185, 84, 0.1);
-    --youtube-bg: rgba(255, 0, 0, 0.1);
+    --ytmusic-red: #FF0000;
+    --ytmusic-bg: rgba(255, 0, 0, 0.1);
 
     /* Spacing & Layout */
     --border-radius: 12px;
@@ -480,73 +478,49 @@ input[type="range"]:hover::-webkit-slider-thumb {
     accent-color: var(--light-green);
 }
 
-/* Tabs */
-.tab-container {
-    display: flex;
-    background: #111;
-    border-radius: 12px 12px 0 0;
-    overflow: hidden;
-    margin-bottom: 0;
-}
-
-.tab-btn {
-    flex: 1;
-    padding: 18px;
-    border: none;
-    background: #1a1a2e;
-    color: #888;
-    cursor: pointer;
-    font-weight: 600;
-    font-size: 1rem;
-    transition: all 0.3s;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    border-bottom: 4px solid transparent;
-}
-
-.tab-btn:hover {
-    color: #fff;
-    background: #252540;
-}
-
-.tab-btn.active {
-    background: var(--card-bg);
-    color: var(--white);
-}
-
-.tab-btn.active.spotify {
-    background: var(--spotify-green);
-    color: #FFFFFF;
-    border-bottom: 4px solid var(--spotify-green);
-    /* Keep solid look */
-}
-
-.tab-btn.active.youtube {
-    background: var(--youtube-red);
-    color: #FFFFFF;
-    border-bottom: 4px solid var(--youtube-red);
-    /* Keep solid look */
-}
-
-.tab-content {
-    display: none;
+/* YouTube Music Content */
+#ytmusic-content {
     padding: 20px;
-    border-radius: 0 0 12px 12px;
-    background: var(--card-bg);
+    border-radius: 12px;
+    background: linear-gradient(180deg, rgba(255, 0, 0, 0.05) 0%, var(--card-bg) 100%);
     min-height: 200px;
 }
 
-.tab-content.active {
-    display: block;
-    animation: fadeIn 0.3s ease;
+/* Device Code Display (OAuth Flow) */
+.device-code-display {
+    text-align: center;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 12px;
+    margin: 15px 0;
 }
 
-#tab-spotify {
-    background: linear-gradient(180deg, rgba(29, 185, 84, 0.05) 0%, var(--card-bg) 100%);
+.device-url {
+    margin-bottom: 15px;
 }
 
-#tab-youtube {
-    background: linear-gradient(180deg, rgba(255, 0, 0, 0.05) 0%, var(--card-bg) 100%);
+.device-url a {
+    font-size: 1.1rem;
+    color: var(--light-blue);
+    text-decoration: none;
+}
+
+.device-url a:hover {
+    text-decoration: underline;
+}
+
+.device-code {
+    font-size: 2.5rem;
+    font-weight: 800;
+    font-family: monospace;
+    letter-spacing: 8px;
+    color: var(--white);
+    background: rgba(255, 255, 255, 0.1);
+    padding: 15px 30px;
+    border-radius: 8px;
+    display: inline-block;
+    border: 2px solid var(--ytmusic-red);
+    text-shadow: 0 0 10px rgba(255, 0, 0, 0.3);
 }
 
 /* Search Results */
@@ -590,18 +564,8 @@ input[type="range"]:hover::-webkit-slider-thumb {
 }
 
 .result-item.selected {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.3);
-}
-
-#tab-spotify .result-item.selected {
-    border-color: var(--spotify-green);
-    background: rgba(29, 185, 84, 0.1);
-}
-
-#tab-youtube .result-item.selected {
-    border-color: var(--youtube-red);
     background: rgba(255, 0, 0, 0.1);
+    border-color: var(--ytmusic-red);
 }
 
 .result-item img {
@@ -672,17 +636,9 @@ input[type="range"]:hover::-webkit-slider-thumb {
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
 }
 
-.global-dance-btn.ready.spotify {
-    background: var(--spotify-green);
+.global-dance-btn.ready.ytmusic {
+    background: var(--ytmusic-red);
     color: #FFFFFF;
-    box-shadow: 0 0 20px rgba(29, 185, 84, 0.4);
-    border-radius: 500px;
-    font-weight: 700;
-}
-
-.global-dance-btn.ready.youtube {
-    background: var(--youtube-red);
-    color: #fff;
     box-shadow: 0 0 20px rgba(255, 0, 0, 0.4);
     border-radius: 500px;
     font-weight: 700;
@@ -872,7 +828,7 @@ input[type="range"]:hover::-webkit-slider-thumb {
     }
 }
 
-/* Setup Accordion for Spotify */
+/* Setup Accordion for YouTube Music */
 .setup-accordion {
     background: rgba(0, 0, 0, 0.2);
     border: 1px solid var(--navy);
@@ -941,10 +897,9 @@ input[type="range"]:hover::-webkit-slider-thumb {
     font-weight: 600;
 }
 
-/* Spotify Brand Buttons - Primary */
-.spotify-login-btn,
-.spotify-btn {
-    background: #1DB954;
+/* YouTube Music Brand Buttons */
+.ytmusic-btn {
+    background: var(--ytmusic-red);
     color: #FFFFFF;
     padding: 14px 32px;
     border-radius: 500px;
@@ -963,33 +918,10 @@ input[type="range"]:hover::-webkit-slider-thumb {
     min-height: 48px;
 }
 
-.spotify-login-btn:hover,
-.spotify-btn:hover {
-    background-color: #1ed760;
-    transform: scale(1.04);
-}
-
-.youtube-btn {
-    padding: 14px 32px;
-    border: none;
-    border-radius: 500px;
-    font-weight: 700;
-    cursor: pointer;
-    color: white;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    background: var(--youtube-red);
-    font-family: 'Circular', -apple-system, BlinkMacSystemFont, sans-serif;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 48px;
-}
-
-.youtube-btn:hover {
+.ytmusic-btn:hover {
     background: #ff3333;
-    transform: translateY(-1px);
+    transform: scale(1.04);
+    box-shadow: 0 0 15px rgba(255, 0, 0, 0.4);
 }
 
 

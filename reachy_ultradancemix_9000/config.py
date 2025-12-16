@@ -47,10 +47,10 @@ APP_CONFIG = {
     "debug": False,
 }
 
-# Audio configuration
+# Audio configuration (16kHz - Reachy Mini Audio hardware limit)
 AUDIO_CONFIG = {
     "sample_rate": 16000,
-    "chunk_size": 512,
+    "chunk_size": 512,  # ~32ms latency at 16kHz
 }
 
 # Mode-specific defaults
@@ -87,8 +87,8 @@ MODE_C_CONFIG = {
     },
 }
 
-# Spotify configuration
-SPOTIFY_CONFIG = {
-    "client_id": "YOUR_CLIENT_ID",  # Set via env var SPOTIFY_CLIENT_ID
-    "redirect_uri": "http://127.0.0.1:9000/api/spotify/callback",
+# YouTube Music configuration
+YTMUSIC_CONFIG = {
+    "client_id": "",  # Set via env var YTMUSIC_CLIENT_ID
+    "client_secret": "",  # Set via env var YTMUSIC_CLIENT_SECRET
 }

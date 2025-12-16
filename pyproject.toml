@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "reachy-ultradancemix-9000"
+version = "1.0.0"
+description = "The ultimate dance app for Reachy Mini - YouTube Music and live audio dancing"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "Apache-2.0"}
+dependencies = [
+    "reachy-mini",
+    "fastapi>=0.109.0",
+    "uvicorn[standard]>=0.27.0",
+    "pydantic>=2.0",
+    "httpx>=0.26.0",
+    "numpy>=1.24.0",
+    "librosa>=0.10.0",
+    "soundfile>=0.12.0",
+    "yt-dlp>=2024.1.0",
+    "ytmusicapi>=1.11.0",
+    "eclipse-zenoh>=1.0.0",
+    "pyaudio>=0.2.14",
+    "reachy-mini-dances-library",
+]
+keywords = ["reachy-mini-app", "dance", "robotics", "youtube-music"]
+
+[project.entry-points."reachy_mini_apps"]
+reachy_ultradancemix_9000 = "reachy_ultradancemix_9000.main:ReachyUltradancemix9000"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["reachy_ultradancemix_9000*"]
+
+[tool.setuptools.package-data]
+reachy_ultradancemix_9000 = ["static/*", "static/**/*", "data/*"]

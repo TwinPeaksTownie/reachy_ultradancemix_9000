@@ -12,8 +12,14 @@ numpy>=1.24.0
 pyaudio>=0.2.13
 soundfile>=0.12.0
 
-# HTTP Client (Spotify API)
+# HTTP Client
 httpx>=0.25.0
+
+# YouTube Music API
+ytmusicapi>=1.11.0
+
+# YouTube Audio Download (for Connected Choreographer)
+yt-dlp>=2024.0.0
 
 # Reachy Mini SDK
 # Install from repo or: pip install reachy_mini

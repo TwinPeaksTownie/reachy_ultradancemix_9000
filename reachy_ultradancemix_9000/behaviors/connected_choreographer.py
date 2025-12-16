@@ -1,12 +1,9 @@
 """
 Connected Choreographer - Pre-analyzed audio dance mode.
 
-Supports two audio sources:
-1. YouTube URL - Direct download via yt-dlp
-2. Spotify track - Searches YouTube for "Artist - Title", downloads, and optionally syncs playback
-
-Once audio is obtained, performs offline Librosa analysis and generates
-choreographed dance sequences based on song energy.
+Uses YouTube Music to search for tracks, downloads via yt-dlp, performs
+offline Librosa analysis, and generates choreographed dance sequences
+based on song energy.
 
 This is the "Performer" - knows the song in advance, can anticipate
 changes, and delivers rehearsed movements.
@@ -34,7 +31,7 @@ from .. import mode_settings
 
 if TYPE_CHECKING:
     from ..core.safety_mixer import SafetyMixer
-    from ..spotify.client import SpotifyClient
+    from ..youtube_music.client import YouTubeMusicClient
 
 logger = logging.getLogger(__name__)
 
@@ -253,9 +250,6 @@ class ConnectedChoreographerConfig:
     neutral_pos: np.ndarray = field(default_factory=lambda: np.array([0.0, 0.0, 0.01]))
     neutral_eul: np.ndarray = field(default_factory=lambda: np.zeros(3))
 
-    # Spotify sync offset (seconds)
-    sync_offset: float = 0.0
-
 
 class YouTubeDownloader:
     """Download audio from YouTube using yt-dlp."""
@@ -274,6 +268,18 @@ class YouTubeDownloader:
 
         Returns path to downloaded WAV file or None if failed.
         """
+        import sys
+
+        # Fix for systems with latin-1 stdout/stderr encoding (e.g., Raspberry Pi)
+        # Reconfigure stdout/stderr to use UTF-8 with error replacement
+        try:
+            if hasattr(sys.stdout, 'reconfigure'):
+                sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+            if hasattr(sys.stderr, 'reconfigure'):
+                sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+        except Exception:
+            pass  # If reconfigure fails, continue with original encoding
+
         try:
             import yt_dlp
         except ImportError:
@@ -282,13 +288,42 @@ class YouTubeDownloader:
 
         output_template = str(self.download_dir / "%(title)s [%(id)s].%(ext)s")
 
+        # Custom logger class to handle encoding issues
+        class UTF8Logger:
+            def debug(self, msg):
+                if msg.startswith('[debug] '):
+                    pass
+                else:
+                    self.info(msg)
+            def info(self, msg):
+                try:
+                    logger.info(f"[yt-dlp] {msg}")
+                except UnicodeEncodeError:
+                    logger.info(f"[yt-dlp] {msg.encode('utf-8', errors='replace').decode('utf-8')}")
+            def warning(self, msg):
+                try:
+                    logger.warning(f"[yt-dlp] {msg}")
+                except UnicodeEncodeError:
+                    logger.warning(f"[yt-dlp] {msg.encode('utf-8', errors='replace').decode('utf-8')}")
+            def error(self, msg):
+                try:
+                    logger.error(f"[yt-dlp] {msg}")
+                except UnicodeEncodeError:
+                    logger.error(f"[yt-dlp] {msg.encode('utf-8', errors='replace').decode('utf-8')}")
+
         ydl_opts = {
             "format": "bestaudio/best",
             "outtmpl": output_template,
             "extract_flat": False,
-            "quiet": True,
-            "no_warnings": True,
+            "quiet": False,  # Enable output so our logger handles it
+            "no_warnings": False,
             "noprogress": True,
+            "logger": UTF8Logger(),
+            # Fix encoding issues with Unicode characters in titles
+            "restrictfilenames": True,  # Replace special chars with underscores
+            "windowsfilenames": True,   # Additional filename sanitization
+            # Legacy compat options for better encoding handling
+            "compat_opts": ["no-live-chat"],
             "postprocessors": [
                 {
                     "key": "FFmpegExtractAudio",
@@ -296,7 +331,7 @@ class YouTubeDownloader:
                     "preferredquality": "320",
                 }
             ],
-            "postprocessor_args": ["-loglevel", "error"],
+            "postprocessor_args": {"FFmpegExtractAudio": ["-loglevel", "error"]},
         }
 
         try:
@@ -311,8 +346,10 @@ class YouTubeDownloader:
                     info = info["entries"][0]
 
                 video_title = info.get("title", "Unknown")
-                logger.info(f"[ConnectedChoreographer] Downloading: {video_title}")
-                self.log(f"Downloading: {video_title}")
+                # Safely encode title for logging
+                safe_title = video_title.encode('utf-8', errors='replace').decode('utf-8')
+                logger.info(f"[ConnectedChoreographer] Downloading: {safe_title}")
+                self.log(f"Downloading: {safe_title}")
 
                 ydl.download([url])
 
@@ -322,9 +359,16 @@ class YouTubeDownloader:
                     audio_files.sort(key=lambda x: x.stat().st_mtime, reverse=True)
                     return str(audio_files[0])
 
+        except UnicodeEncodeError as e:
+            logger.error(f"[ConnectedChoreographer] Encoding error: {e}")
+            self.log("Download failed: encoding error in video metadata")
         except Exception as e:
-            logger.error(f"[ConnectedChoreographer] Download error: {e}")
-
+            # Safely format error message
+            try:
+                error_msg = str(e)
+            except UnicodeEncodeError:
+                error_msg = str(e).encode('utf-8', errors='replace').decode('utf-8')
+            logger.error(f"[ConnectedChoreographer] Download error: {error_msg}")
         return None
 
 
@@ -334,15 +378,23 @@ class SongAnalyzer:
         self.log = log_callback if log_callback else lambda x: None
 
     def analyze(self, audio_path: str) -> SongAnalysis:
-        """Perform full Librosa analysis of audio file."""
+        """Perform full Librosa analysis of audio file.
+
+        Optimized for Raspberry Pi - uses lower sample rate for faster processing.
+        """
         logger.info(f"[ConnectedChoreographer] Analyzing: {audio_path}")
         self.log(f"Analyzing audio: {Path(audio_path).name}")
 
-        # Load audio
-        y, sr = librosa.load(audio_path)
+        # Load audio at lower sample rate for faster analysis on Pi
+        # 11025 Hz mono is sufficient for beat detection
+        analysis_sr = 11025
+        y, sr = librosa.load(audio_path, sr=analysis_sr, mono=True)
         duration = len(y) / sr
 
+        self.log(f"Audio loaded: {duration:.1f}s at {sr}Hz")
+
         # Tempo and beat detection
+        self.log("Detecting tempo and beats...")
         tempo, beats = librosa.beat.beat_track(y=y, sr=sr)
         tempo_val = float(tempo[0] if isinstance(tempo, np.ndarray) else tempo)
         beat_times = librosa.frames_to_time(beats, sr=sr)
@@ -361,17 +413,23 @@ class SongAnalyzer:
         logger.info(f"[ConnectedChoreographer] Detected {len(beat_times)} beats at {tempo_val:.1f} BPM")
         self.log(f"Detected {len(beat_times)} beats at {tempo_val:.1f} BPM")
 
-        # RMS energy
-        rms = librosa.feature.rms(y=y)[0]
+        # RMS energy (using smaller hop for faster computation)
+        self.log("Computing energy envelope...")
+        hop_length = 512
+        rms = librosa.feature.rms(y=y, hop_length=hop_length)[0]
 
         # Onset Strength
-        onset_env = librosa.onset.onset_strength(y=y, sr=sr)
+        self.log("Computing onset envelope...")
+        onset_env = librosa.onset.onset_strength(y=y, sr=sr, hop_length=hop_length)
 
         # Calculate energy at each beat
+        self.log("Mapping energy to beats...")
         energy_per_beat = self._compute_beat_energy(beat_times, rms, duration, len(y), sr)
 
         # Assign energy levels to 8-beat blocks
         sequence_assignments = self._assign_sequences(energy_per_beat)
+
+        self.log(f"Analysis complete! {len(sequence_assignments)} sequences planned")
 
         return SongAnalysis(
             audio_path=audio_path,
@@ -383,7 +441,7 @@ class SongAnalyzer:
             energy_envelope=rms,
             onset_envelope=onset_env,
             envelope_sr=sr,
-            hop_length=512,
+            hop_length=hop_length,
         )
 
     def _compute_beat_energy(
@@ -433,7 +491,7 @@ class SongAnalyzer:
 class ConnectedChoreographer(DanceMode):
     """Connected Choreographer - Pre-analyzed audio dance mode.
 
-    Supports YouTube URLs and Spotify tracks as audio sources.
+    Uses YouTube Music for track search and selection.
     """
 
     MODE_ID = "connected_choreographer"
@@ -442,18 +500,17 @@ class ConnectedChoreographer(DanceMode):
     def __init__(
         self,
         safety_mixer: SafetyMixer,
-        spotify_client: Optional[SpotifyClient] = None,
+        ytmusic_client: Optional[YouTubeMusicClient] = None,
     ):
         super().__init__(safety_mixer)
 
         self.config = ConnectedChoreographerConfig()
-        self.spotify = spotify_client
+        self.ytmusic = ytmusic_client
         self.analysis: Optional[SongAnalysis] = None
 
-        # Audio source (set via set_youtube_url or set_spotify_track)
+        # Audio source (set via set_ytmusic_track)
         self.youtube_url: Optional[str] = None
-        self.spotify_track: Optional[dict] = None
-        self.use_spotify_playback: bool = False  # If True, sync to Spotify instead of local ffplay
+        self.ytmusic_track: Optional[dict] = None
 
         # Load settings
         self._load_settings()
@@ -486,7 +543,7 @@ class ConnectedChoreographer(DanceMode):
             "total_beats": 0,
             "energy_level": "",
             "is_breathing": False,
-            "source": None,  # "youtube" or "spotify"
+            "source": None,  # "ytmusic"
             "track_info": None,
             "logs": [],
         }
@@ -517,43 +574,38 @@ class ConnectedChoreographer(DanceMode):
                 setattr(self.config, key, value)
                 logger.info(f"Updated ConnectedChoreographer setting: {key} = {value}")
 
-    def set_youtube_url(self, url: str) -> None:
-        """Set YouTube URL as audio source."""
-        self.youtube_url = url
-        self.spotify_track = None
-        self.use_spotify_playback = False
-        self._status["source"] = "youtube"
-        self._status["track_info"] = {"url": url}
-        self._log(f"Set YouTube URL: {url}")
+    async def set_ytmusic_track(self, track_info: dict) -> None:
+        """Set YouTube Music track as audio source.
 
-    async def set_spotify_track(self, track_info: dict) -> None:
-        """Set Spotify track as audio source."""
-        self.spotify_track = track_info
-        self.youtube_url = None
+        Args:
+            track_info: Dict with videoId, title, artists, thumbnails, album
+        """
+        self.ytmusic_track = track_info
 
-        artist = track_info["artists"][0]["name"]
-        name = track_info["name"]
+        video_id = track_info.get("videoId")
+        title = track_info.get("title", "Unknown")
+        artists = track_info.get("artists", [])
+        artist_name = artists[0].get("name", "Unknown") if artists else "Unknown"
 
-        self._status["source"] = "spotify"
+        # Set the direct YouTube Music URL for yt-dlp
+        self.youtube_url = f"https://music.youtube.com/watch?v={video_id}"
+
+        thumbnails = track_info.get("thumbnails", [])
+        thumbnail_url = thumbnails[0].get("url") if thumbnails else None
+
+        self._status["source"] = "ytmusic"
         self._status["track_info"] = {
-            "name": name,
-            "artist": artist,
-            "uri": track_info["uri"],
-            "image": track_info["album"]["images"][0]["url"] if track_info["album"]["images"] else None,
+            "title": title,
+            "artist": artist_name,
+            "videoId": video_id,
+            "thumbnail": thumbnail_url,
         }
 
-        self._log(f"Set Spotify track: {artist} - {name}")
+        self._log(f"Set YouTube Music track: {artist_name} - {title}")
 
     def _get_download_url(self) -> Optional[str]:
         """Get the URL to download audio from."""
-        if self.youtube_url:
-            return self.youtube_url
-        elif self.spotify_track:
-            # Construct YouTube search query from Spotify track
-            artist = self.spotify_track["artists"][0]["name"]
-            name = self.spotify_track["name"]
-            return f"ytsearch1:{artist} - {name} audio"
-        return None
+        return self.youtube_url
 
     async def start(self) -> None:
         """Start the choreographer (non-blocking)."""
@@ -579,8 +631,7 @@ class ConnectedChoreographer(DanceMode):
         """Background task to download, analyze, and start dancing."""
         try:
             # 1. Download
-            source_name = "Spotify" if self.spotify_track else "YouTube"
-            self._log(f"Retreiving audio from {source_name}...") 
+            self._log("Retrieving audio from YouTube Music...") 
             
             # Run blocking download in executor
             loop = asyncio.get_running_loop()
@@ -618,11 +669,6 @@ class ConnectedChoreographer(DanceMode):
             self._log("Planning moves that will blow your mind")
             await asyncio.sleep(1.5) # Dramatic pause
 
-            # Check Spotify playback if this is a Spotify track
-            self.use_spotify_playback = False
-            if self.spotify_track and self.spotify:
-                await self._try_spotify_playback()
-
             # 4. Start Dance Thread
             if not self.running: # Check if stopped during prep
                 return
@@ -649,32 +695,6 @@ class ConnectedChoreographer(DanceMode):
             import traceback
             traceback.print_exc()
 
-    async def _try_spotify_playback(self) -> None:
-        """Try to start Spotify playback on an available device."""
-        if not self.spotify or not self.spotify_track:
-            return
-
-        try:
-            devices_response = await self.spotify.get_devices()
-            devices = devices_response.get("devices", [])
-
-            if devices:
-                active_device = next((d for d in devices if d.get("is_active")), devices[0])
-                logger.info(f"[{self.MODE_NAME}] Found Spotify device: {active_device['name']}")
-
-                await self.spotify.start_playback(
-                    uris=[self.spotify_track["uri"]],
-                    device_id=active_device["id"],
-                )
-                self.use_spotify_playback = True
-                self._log("Spotify playback started")
-                logger.info(f"[{self.MODE_NAME}] Spotify playback started")
-            else:
-                self._log("No Spotify devices - using local audio")
-                logger.info(f"[{self.MODE_NAME}] No Spotify devices - using local audio")
-        except Exception as e:
-            logger.warning(f"[{self.MODE_NAME}] Spotify playback failed: {e} - using local audio")
-
     async def stop(self) -> None:
         """Stop the choreographer."""
         if not self.running:
@@ -694,12 +714,7 @@ class ConnectedChoreographer(DanceMode):
             self.prep_task = None
 
         # Stop audio
-        if self.use_spotify_playback and self.spotify:
-            try:
-                await self.spotify.pause_playback()
-            except Exception as e:
-                logger.warning(f"[{self.MODE_NAME}] Failed to pause Spotify: {e}")
-        elif self.audio_process:
+        if self.audio_process:
             try:
                 self.audio_process.terminate()
                 self.audio_process.wait(timeout=5.0)
@@ -833,12 +848,9 @@ class ConnectedChoreographer(DanceMode):
         beat_times = self.analysis.beat_times
         sequence_assignments = self.analysis.sequence_assignments
 
-        # Start audio playback (local or poll Spotify)
-        if self.use_spotify_playback:
-            self._dance_loop_spotify_sync(beat_times, sequence_assignments)
-        else:
-            self._start_audio_playback()
-            self._dance_loop_local_audio(beat_times, sequence_assignments)
+        # Start audio playback
+        self._start_audio_playback()
+        self._dance_loop_local_audio(beat_times, sequence_assignments)
 
     def _dance_loop_local_audio(
         self,
@@ -910,115 +922,6 @@ class ConnectedChoreographer(DanceMode):
                 self.mixer.send_intent(final_intent)
 
             time.sleep(0.02)
-
-    def _dance_loop_spotify_sync(
-        self,
-        beat_times: np.ndarray,
-        sequence_assignments: list[str],
-    ) -> None:
-        """Dance loop synced to Spotify playback."""
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-
-        current_block = -1
-        energy_level = "medium"
-
-        last_poll_time = 0
-        local_start_time = time.time()
-        last_time = local_start_time
-        is_playing = True
-
-        self.breathing_time = 0.0
-        current_offset = np.zeros(6)
-
-        while not self.stop_event.is_set():
-            now = time.time()
-            dt = now - last_time
-            last_time = now
-
-            self.breathing_time += dt
-
-            # Poll Spotify every 1s
-            if now - last_poll_time > 1.0:
-                try:
-                    state = loop.run_until_complete(self.spotify.get_playback_state())
-                    if state and state.get("item"):
-                        if state["item"]["uri"] != self.spotify_track["uri"]:
-                            logger.info(f"[{self.MODE_NAME}] Track changed externally")
-                            break
-
-                        is_playing = state["is_playing"]
-                        if is_playing:
-                            spotify_position_ms = state["progress_ms"]
-                            local_start_time = now - (spotify_position_ms / 1000.0)
-                            local_start_time += self.config.sync_offset
-
-                    last_poll_time = now
-                except Exception as e:
-                    logger.warning(f"[{self.MODE_NAME}] Poll error: {e}")
-
-            if not is_playing:
-                time.sleep(0.1)
-                continue
-
-            elapsed = time.time() - local_start_time
-
-            current_beat = np.searchsorted(beat_times, elapsed) - 1
-            current_beat = max(0, min(current_beat, len(beat_times) - 1))
-
-            self._status["current_beat"] = current_beat
-            self._status["progress"] = elapsed / self.analysis.duration
-
-            if elapsed >= self.analysis.duration + 2.0:
-                break
-
-            block_idx = current_beat // 8
-
-            if block_idx != current_block:
-                current_block = block_idx
-                if block_idx < len(sequence_assignments):
-                    energy_level = sequence_assignments[block_idx]
-                    self.current_sequence = self._select_sequence(energy_level)
-                    self._status["energy_level"] = energy_level
-
-            self._status["is_breathing"] = True
-
-            breathing_intent = self._compute_breathing_pose(self.breathing_time)
-            antennas = self._get_continuous_antennas(elapsed)
-
-            beat_in_block = current_beat % 8
-
-            if self.current_sequence:
-                beat_in_block = min(beat_in_block, len(self.current_sequence) - 1)
-                move = self.current_sequence[beat_in_block]
-                target = np.array(move["coords"])
-                alpha = self.config.interpolation_alpha
-                current_offset += (target - current_offset) * alpha
-
-                pos_offset, ori_offset = self._coords_to_offset(current_offset.tolist())
-                final_intent = self._add_offset_to_intent(breathing_intent, pos_offset, ori_offset)
-                final_intent = MovementIntent(
-                    position=final_intent.position,
-                    orientation=final_intent.orientation,
-                    antennas=antennas,
-                )
-                self.mixer.send_intent(final_intent)
-            else:
-                final_intent = MovementIntent(
-                    position=breathing_intent.position,
-                    orientation=breathing_intent.orientation,
-                    antennas=antennas,
-                )
-                self.mixer.send_intent(final_intent)
-
-            time.sleep(0.02)
-
-        loop.close()
-
-        if self.running:
-            self.mixer.reset()
-            self._status["running"] = False
-            self._status["state"] = "idle"
 
     def _start_audio_playback(self) -> None:
         """Start audio playback using ffplay."""

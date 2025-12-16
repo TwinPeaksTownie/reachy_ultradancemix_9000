@@ -94,101 +94,24 @@
             <div id="settings-connected_choreographer" class="mode-settings-panel">
                 <h3>Both of you dance like you want to win.</h3>
 
-                <!-- Tabs -->
-                <div class="tab-container">
-                    <button class="tab-btn active spotify" onclick="openTab('spotify')">Spotify</button>
-                    <button class="tab-btn youtube" onclick="openTab('youtube')">YouTube</button>
-                </div>
-
-                <!-- Spotify Tab -->
-                <div id="tab-spotify" class="tab-content active">
-                    <!-- Login Section -->
-                    <div id="spotify-login-section" style="display: none;">
-                        <p style="text-align: center; color: #ccc; margin-bottom: 20px;">
-                            Connect your Spotify Premium account.
-                        </p>
-                        <details class="setup-accordion" id="setup-details">
-                            <summary>
-                                <span>First Time Setup (Click Here)</span>
-                                <span>&#9660;</span>
-                            </summary>
-                            <div class="setup-content">
-                                <div class="step">
-                                    <span class="step-num">1</span>
-                                    <div class="step-text">
-                                        Go to <a href="https://developer.spotify.com/dashboard" target="_blank"
-                                            style="color: var(--light-blue);">Spotify Developer Dashboard</a> and log
-                                        in.
-                                    </div>
-                                </div>
-                                <div class="step">
-                                    <span class="step-num">2</span>
-                                    <div class="step-text">
-                                        Click <strong>Create App</strong>. Name it "Reachy".<br>
-                                        Set <strong>Redirect URI</strong> to exactly:
-                                        <div class="copy-box">
-                                            <code
-                                                id="redirect-uri-text">http://127.0.0.1:9000/api/spotify/callback</code>
-                                            <button class="copy-btn" onclick="copyUri()">Copy</button>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="step">
-                                    <span class="step-num">3</span>
-                                    <div class="step-text">
-                                        Click Save. Copy the <strong>Client ID</strong> and paste it below.
-                                    </div>
-                                </div>
-                            </div>
-                        </details>
-                        <div class="client-id-container" style="margin-bottom: 20px;">
-                            <label>Spotify Client ID</label>
-                            <input type="text" id="custom-client-id" class="url-input"
-                                placeholder="e.g. 4a2b6c... (Paste here)" oninput="saveClientId(this.value)">
-                        </div>
-                        <button class="spotify-btn" onclick="spotifyLogin()">Login with Spotify</button>
-                    </div>
-
-                    <!-- Search Section (Post-Login) -->
-                    <div id="spotify-search-section" style="display: none;">
-                        <div style="display: flex; gap: 10px;">
-                            <input type="text" id="spotify-search-input" class="url-input" style="margin-bottom: 0;"
-                                placeholder="Search Spotify for a song..."
-                                onkeypress="if(event.key === 'Enter') searchSpotify()">
-                            <button class="spotify-btn" style="flex: 0 0 80px;" onclick="searchSpotify()">Go</button>
-                        </div>
-
-                        <div id="spotify-results" class="results-container">
-                            <p style="color: #666; text-align: center; margin-top: 20px;">Results will appear here...
-                            </p>
-                        </div>
-
-
-                        <div style="margin-top: 10px; text-align: center;">
-                            <button id="spotify-dance-btn" class="global-dance-btn spotify"
-                                style="width: 50%; margin: 0 auto; display: block;" onclick="handleGlobalDance()">
-                                DANCE!
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- YouTube Tab -->
-                <div id="tab-youtube" class="tab-content">
+                <!-- YouTube Music Search (no login required!) -->
+                <div id="ytmusic-content">
+                    <p style="text-align: center; color: #888; margin-bottom: 15px; font-size: 0.9rem;">
+                        Search for any song - no login required!
+                    </p>
                     <div style="display: flex; gap: 10px;">
-                        <input type="text" id="youtube-url" class="url-input" style="margin-bottom: 0;"
-                            placeholder="Paste YouTube URL...">
-                        <button class="youtube-btn" style="flex: 0 0 80px;" onclick="submitYoutubeUrl()">Go</button>
+                        <input type="text" id="ytmusic-search-input" class="url-input" style="margin-bottom: 0;"
+                            placeholder="Search YouTube Music..."
+                            onkeypress="if(event.key === 'Enter') searchYtmusic()">
+                        <button class="ytmusic-btn" style="flex: 0 0 80px;" onclick="searchYtmusic()">Go</button>
                     </div>
 
-                    <div id="youtube-results" class="results-container">
-                        <p style="color: #666; text-align: center; margin-top: 20px;">Video preview will appear here...
-                        </p>
+                    <div id="ytmusic-results" class="results-container">
+                        <p style="color: #666; text-align: center; margin-top: 20px;">Results will appear here...</p>
                     </div>
-
 
                     <div style="margin-top: 10px; text-align: center;">
-                        <button id="youtube-dance-btn" class="global-dance-btn youtube"
+                        <button id="ytmusic-dance-btn" class="global-dance-btn ytmusic"
                             style="width: 50%; margin: 0 auto; display: block;" onclick="handleGlobalDance()">
                             DANCE!
                         </button>
@@ -412,8 +335,7 @@
         let ws = null;
 
         // New State for Connected Choreographer
-        let currentTab = 'spotify';
-        let selectedItem = null; // { type: 'spotify'|'youtube', data: ... }
+        let selectedItem = null; // { type: 'ytmusic', data: ... }
 
         // Toggle collapsible sections
         function toggleCollapsible(id) {
@@ -444,11 +366,9 @@
                 startBtn.style.display = 'block';
             }
 
-            // Check Spotify status when Connected Choreographer is selected
+            // Check YouTube Music status when Connected Choreographer is selected
             if (mode === 'connected_choreographer') {
-                checkSpotifyStatus();
-                // Ensure a tab is open
-                openTab(currentTab);
+                checkYtmusicStatus();
                 // Show terminal
                 document.getElementById('status-terminal').classList.add('active');
             } else {
@@ -469,44 +389,18 @@
             }
         }
 
-        // Tab Handling
-        function openTab(tab) {
-            currentTab = tab;
-
-            // Update Tab Buttons
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.remove('active');
-                if (btn.classList.contains(tab)) btn.classList.add('active');
-            });
-
-            // Update Tab Content
-            document.querySelectorAll('.tab-content').forEach(content => {
-                content.classList.remove('active');
-            });
-            document.getElementById(`tab-${tab}`).classList.add('active');
-
-            // Update Dance Button State
-            updateGlobalButton();
-        }
-
         function updateGlobalButton() {
-            // Check both buttons
-            const spotifyBtn = document.getElementById('spotify-dance-btn');
-            const youtubeBtn = document.getElementById('youtube-dance-btn');
+            const ytmusicBtn = document.getElementById('ytmusic-dance-btn');
 
             // Default disabled
-            if (spotifyBtn) spotifyBtn.disabled = true;
-            if (youtubeBtn) youtubeBtn.disabled = true;
-            if (spotifyBtn) spotifyBtn.classList.remove('ready');
-            if (youtubeBtn) youtubeBtn.classList.remove('ready');
-
-            if (selectedItem && selectedItem.type === 'spotify' && spotifyBtn) {
-                spotifyBtn.classList.add('ready');
-                spotifyBtn.disabled = false;
+            if (ytmusicBtn) {
+                ytmusicBtn.disabled = true;
+                ytmusicBtn.classList.remove('ready');
             }
-            if (selectedItem && selectedItem.type === 'youtube' && youtubeBtn) {
-                youtubeBtn.classList.add('ready');
-                youtubeBtn.disabled = false;
+
+            if (selectedItem && selectedItem.type === 'ytmusic' && ytmusicBtn) {
+                ytmusicBtn.classList.add('ready');
+                ytmusicBtn.disabled = false;
             }
         }
 
@@ -572,38 +466,64 @@
             }
         }
 
-        // YouTube Logic (Staging)
-        function submitYoutubeUrl() {
-            const url = document.getElementById('youtube-url').value;
-            if (!url) {
-                showMessage('Please enter a YouTube URL', 'error');
-                return;
+        // YouTube Music Logic (no auth required!)
+        async function checkYtmusicStatus() {
+            try {
+                const res = await fetch(`${API_BASE}/api/ytmusic/status`);
+                const data = await res.json();
+
+                if (!data.available) {
+                    console.warn('YouTube Music not available:', data.message);
+                }
+                // Search is always available - no login needed!
+            } catch (e) {
+                console.error('YouTube Music status check failed', e);
             }
-
-            // Create a staged result item
-            const resultsDiv = document.getElementById('youtube-results');
-            const resultId = 'yt-result-' + Date.now();
-
-            // Simple display
-            resultsDiv.innerHTML = `
-                <div id="${resultId}" class="result-item" onclick="selectItem('youtube', {url: '${url}'}, '${resultId}')">
-                    <img src="https://img.youtube.com/vi/${getYouTubeID(url)}/0.jpg" onerror="this.src='https://via.placeholder.com/60?text=YT'" alt="YT">
-                    <div class="result-info">
-                        <div class="result-title">YouTube Video</div>
-                        <div class="result-subtitle">${url}</div>
-                    </div>
-                </div>
-            `;
-
-            // Auto Select
-            selectItem('youtube', { url: url }, resultId);
         }
 
-        function getYouTubeID(url) {
-            // Basic extraction
-            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-            const match = url.match(regExp);
-            return (match && match[2].length === 11) ? match[2] : 'default';
+        async function searchYtmusic() {
+            const query = document.getElementById('ytmusic-search-input').value;
+            if (!query) return;
+
+            const resultsDiv = document.getElementById('ytmusic-results');
+            resultsDiv.innerHTML = '<p style="color: #888; text-align: center;">Searching...</p>';
+
+            try {
+                const res = await fetch(`${API_BASE}/api/ytmusic/search?q=${encodeURIComponent(query)}`);
+                const data = await res.json();
+
+                resultsDiv.innerHTML = '';
+
+                if (data.tracks && data.tracks.length > 0) {
+                    data.tracks.forEach((track, index) => {
+                        const div = document.createElement('div');
+                        const resultId = `ytmusic-track-${index}`;
+                        div.id = resultId;
+                        div.className = 'result-item';
+                        div.onclick = () => selectItem('ytmusic', track, resultId);
+
+                        const imgUrl = track.thumbnails && track.thumbnails.length > 0
+                            ? track.thumbnails[0].url
+                            : '';
+                        const artistNames = track.artists
+                            ? track.artists.map(a => a.name).join(', ')
+                            : 'Unknown Artist';
+
+                        div.innerHTML = `
+                            <img src="${imgUrl}" alt="Album Art" onerror="this.src='https://via.placeholder.com/60?text=YTM'">
+                            <div class="result-info">
+                                <div class="result-title">${track.title}</div>
+                                <div class="result-subtitle">${artistNames}</div>
+                            </div>
+                        `;
+                        resultsDiv.appendChild(div);
+                    });
+                } else {
+                    resultsDiv.innerHTML = '<p style="color: #888; text-align: center;">No results found.</p>';
+                }
+            } catch (e) {
+                resultsDiv.innerHTML = `<p style="color: var(--pink); text-align: center;">Error: ${e.message}</p>`;
+            }
         }
 
         // Stop mode
@@ -617,138 +537,6 @@
                 showMessage('Mode stopped', 'success');
             } catch (error) {
                 showMessage('Connection error: ' + error.message, 'error');
-            }
-        }
-
-        // Spotify Logic
-        function copyUri() {
-            const text = document.getElementById('redirect-uri-text').textContent;
-            navigator.clipboard.writeText(text).then(() => {
-                const btn = document.querySelector('.copy-btn');
-                const orig = btn.textContent;
-                btn.textContent = 'Copied!';
-                setTimeout(() => btn.textContent = orig, 2000);
-            });
-        }
-
-        function saveClientId(val) {
-            localStorage.setItem('spotify_client_id', val.trim());
-        }
-
-        function disconnectSpotify() {
-            localStorage.removeItem('spotify_client_id');
-            location.reload();
-        }
-
-        async function checkSpotifyStatus() {
-            try {
-                const res = await fetch(`${API_BASE}/api/spotify/status`);
-                const data = await res.json();
-
-                const loginSection = document.getElementById('spotify-login-section');
-                const searchSection = document.getElementById('spotify-search-section');
-
-                if (data.authenticated) {
-                    loginSection.style.display = 'none';
-                    searchSection.style.display = 'block';
-                } else {
-                    loginSection.style.display = 'block';
-                    searchSection.style.display = 'none';
-
-                    const saved = localStorage.getItem('spotify_client_id');
-                    const input = document.getElementById('custom-client-id');
-                    if (saved && input) {
-                        input.value = saved;
-                        document.getElementById('setup-details').open = false;
-                    } else {
-                        document.getElementById('setup-details').open = true;
-                    }
-                }
-            } catch (e) {
-                console.error('Spotify status check failed', e);
-            }
-        }
-
-        async function spotifyLogin() {
-            const cid = document.getElementById('custom-client-id').value.trim();
-            if (!cid) {
-                document.getElementById('setup-details').open = true;
-                document.getElementById('custom-client-id').focus();
-                showMessage('Please enter Client ID', 'error');
-                return;
-            }
-
-            try {
-                const res = await fetch(`${API_BASE}/api/spotify/login?client_id=${encodeURIComponent(cid)}`);
-                const data = await res.json();
-
-                const width = 500;
-                const height = 700;
-                const left = (window.screen.width / 2) - (width / 2);
-                const top = (window.screen.height / 2) - (height / 2);
-
-                const popup = window.open(data.url, 'Spotify Login', `width=${width},height=${height},top=${top},left=${left}`);
-
-                const poll = setInterval(async () => {
-                    if (popup.closed) {
-                        clearInterval(poll);
-                        checkSpotifyStatus();
-                    }
-
-                    try {
-                        const res = await fetch(`${API_BASE}/api/spotify/status`);
-                        const data = await res.json();
-                        if (data.authenticated) {
-                            clearInterval(poll);
-                            if (!popup.closed) popup.close();
-                            checkSpotifyStatus();
-                            showMessage('Connected!', 'success');
-                        }
-                    } catch (e) { }
-                }, 1000);
-
-            } catch (e) {
-                showMessage('Failed to start login: ' + e.message, 'error');
-            }
-        }
-
-        async function searchSpotify() {
-            const query = document.getElementById('spotify-search-input').value;
-            if (!query) return;
-
-            const resultsDiv = document.getElementById('spotify-results');
-            resultsDiv.innerHTML = '<p style="color: #888; text-align: center;">Searching...</p>';
-
-            try {
-                const res = await fetch(`${API_BASE}/api/spotify/search?q=${encodeURIComponent(query)}`);
-                const data = await res.json();
-
-                resultsDiv.innerHTML = '';
-
-                if (data.tracks && data.tracks.items) {
-                    data.tracks.items.forEach((track, index) => {
-                        const div = document.createElement('div');
-                        const resultId = `spotify-track-${index}`;
-                        div.id = resultId;
-                        div.className = 'result-item';
-                        div.onclick = () => selectItem('spotify', track, resultId);
-
-                        const imgUrl = track.album.images[0] ? track.album.images[0].url : '';
-
-                        div.innerHTML = `
-                            <img src="${imgUrl}" alt="Album Art">
-                            <div class="result-info">
-                                <div class="result-title">${track.name}</div>
-                                <div class="result-subtitle">${track.artists.map(a => a.name).join(', ')}</div>
-                            </div>
-                        `;
-                        resultsDiv.appendChild(div);
-                    });
-                } else {
-                    resultsDiv.innerHTML = '<p style="color: #888; text-align: center;">No results found.</p>';
-                }
-            } catch (e) {
-                resultsDiv.innerHTML = `<p style="color: var(--pink); text-align: center;">Error: ${e.message}</p>`;
             }
         }
 
@@ -770,7 +558,7 @@
                     await fetch(`${API_BASE}/api/mode/connected_choreographer/start`, { method: 'POST' });
                 }
 
-                if (selectedItem.type === 'spotify') {
+                if (selectedItem.type === 'ytmusic') {
                     const res = await fetch(`${API_BASE}/api/mode/connected_choreographer/track`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -778,32 +566,17 @@
                     });
 
                     if (res.ok) {
-                        showMessage(`Playing: ${selectedItem.data.name}`, 'success');
+                        const artistNames = selectedItem.data.artists
+                            ? selectedItem.data.artists.map(a => a.name).join(', ')
+                            : 'Unknown';
+                        showMessage(`Playing: ${selectedItem.data.title} - ${artistNames}`, 'success');
                     } else {
                         throw new Error('Failed to set track');
-                    }
-
-                } else if (selectedItem.type === 'youtube') {
-                    // Submit URL
-                    const res = await fetch(`${API_BASE}/api/mode/connected_choreographer/youtube`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ url: selectedItem.data.url })
-                    });
-
-                    if (res.ok) {
-                        showMessage('YouTube URL submitted. Analysis starting...', 'success');
-                    } else {
-                        throw new Error('Failed to submit YouTube URL');
                     }
                 }
             } catch (e) {
                 showMessage(e.message, 'error');
             }
-        }
-
-        async function stopSpotifyPlayback() {
-            stopMode(); // Reusing stop logic
         }
 
         // Update slider display

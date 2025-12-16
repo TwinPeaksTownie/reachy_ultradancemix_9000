@@ -31,8 +31,8 @@ from .behaviors.base import DanceMode
 from .behaviors.live_groove import LiveGroove
 from .behaviors.bluetooth_streamer import BluetoothStreamer
 from .behaviors.connected_choreographer import ConnectedChoreographer
-from .spotify import SpotifyAuth, SpotifyClient
-from .config import get_default_safety_config, APP_CONFIG, SPOTIFY_CONFIG
+from .youtube_music import YouTubeMusicClient
+from .config import get_default_safety_config, APP_CONFIG
 
 
 # Global state
@@ -40,22 +40,59 @@ class AppState:
     """Global application state."""
     mini: Optional[ReachyMini] = None
     safety_mixer: Optional[SafetyMixer] = None
-    spotify_auth: Optional[SpotifyAuth] = None
-    spotify_client: Optional[SpotifyClient] = None
+    ytmusic_client: Optional[YouTubeMusicClient] = None
     current_mode: Optional[DanceMode] = None
     modes: dict[str, type[DanceMode]] = {}
+    external_mini: bool = False  # Flag: True if robot was injected externally
 
 
 state = AppState()
 
 
+def initialize_with_robot(mini: ReachyMini) -> None:
+    """Initialize the app state with an externally-provided robot.
+
+    Called by main.py when running as a ReachyMiniApp.
+    """
+    state.mini = mini
+    state.external_mini = True
+
+    # Initialize SafetyMixer
+    safety_config = get_default_safety_config()
+    state.safety_mixer = SafetyMixer(safety_config, state.mini)
+    print("[UltraDanceMix9000] SafetyMixer initialized")
+
+    # Initialize YouTube Music client (no auth needed for search)
+    state.ytmusic_client = YouTubeMusicClient()
+    print("[UltraDanceMix9000] YouTube Music Client initialized (unauthenticated)")
+
+    # Register available modes
+    state.modes = {
+        "live_groove": LiveGroove,
+        "bluetooth_streamer": BluetoothStreamer,
+        "connected_choreographer": ConnectedChoreographer,
+    }
+    print(f"[UltraDanceMix9000] Registered modes: {list(state.modes.keys())}")
+
+
 @asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Application lifespan handler - connects to robot on startup."""
+async def lifespan(fastapi_app: FastAPI):
+    """Application lifespan handler - connects to robot on startup.
+
+    If initialize_with_robot() was called first (external mode), skip connection.
+    """
+    # Check if robot was already injected externally
+    if state.external_mini and state.mini is not None:
+        print("[UltraDanceMix9000] Using externally-provided robot connection")
+        yield
+        print("[UltraDanceMix9000] Lifespan ending (external mode)")
+        return
+
+    # Standalone mode - create our own connection
     print("Connecting to Reachy Mini...")
 
     try:
-        state.mini = ReachyMini()
+        state.mini = ReachyMini(media_backend="no_media")
         print("Connected to Reachy Mini!")
 
         # Initialize SafetyMixer
@@ -63,13 +100,9 @@ async def lifespan(app: FastAPI):
         state.safety_mixer = SafetyMixer(safety_config, state.mini)
         print("SafetyMixer initialized")
 
-        # Initialize Spotify
-        import os
-        client_id = os.getenv("SPOTIFY_CLIENT_ID", SPOTIFY_CONFIG["client_id"])
-        # Passed as default_client_id (optional now)
-        state.spotify_auth = SpotifyAuth(SPOTIFY_CONFIG["redirect_uri"], default_client_id=client_id)
-        state.spotify_client = SpotifyClient(state.spotify_auth)
-        print("Spotify Client initialized")
+        # Initialize YouTube Music client (no auth needed for search)
+        state.ytmusic_client = YouTubeMusicClient()
+        print("YouTube Music Client initialized (unauthenticated)")
 
         # Register available modes
         state.modes = {
@@ -195,12 +228,9 @@ async def start_mode(mode_id: str, request: ModeStartRequest = None):
             skip_calibration=skip_calibration,
             force_calibration=force_calibration,
         )
-    # Connected Choreographer accepts URL and spotify client
+    # Connected Choreographer accepts ytmusic client
     elif mode_id == "connected_choreographer":
-        state.current_mode = mode_class(state.safety_mixer, state.spotify_client)
-        # If URL provided, set it directly and start
-        if request and request.url:
-            state.current_mode.set_youtube_url(request.url)
+        state.current_mode = mode_class(state.safety_mixer, state.ytmusic_client)
     else:
         # Bluetooth Streamer - no special params
         state.current_mode = mode_class(state.safety_mixer)
@@ -469,57 +499,41 @@ async def save_profile():
         raise HTTPException(status_code=500, detail=f"Failed to save profile: {e}")
 
 
-# Spotify Endpoints
-@app.get("/api/spotify/status")
-async def get_spotify_status():
-    """Check if authenticated with Spotify."""
-    if not state.spotify_auth:
-        return {"authenticated": False}
-    return {"authenticated": state.spotify_auth.is_authenticated()}
+# YouTube Music Endpoints
+@app.get("/api/ytmusic/status")
+async def get_ytmusic_status():
+    """Check if YouTube Music is available.
+
+    No authentication required - search works without login.
+    """
+    if not state.ytmusic_client:
+        return {"available": False, "message": "Client not initialized"}
+    return {
+        "available": state.ytmusic_client.is_available(),
+        "message": "Ready to search (no login required)",
+    }
 
 
-@app.get("/api/spotify/login")
-async def spotify_login(client_id: Optional[str] = None):
-    """Get Spotify login URL."""
-    if not state.spotify_auth:
-        raise HTTPException(status_code=503, detail="Spotify not configured")
+@app.get("/api/ytmusic/search")
+async def ytmusic_search(q: str):
+    """Search YouTube Music tracks.
+
+    No authentication required - search works for everyone!
+    """
+    if not state.ytmusic_client:
+        raise HTTPException(status_code=503, detail="YouTube Music not initialized")
+
     try:
-        return {"url": state.spotify_auth.get_auth_url(client_id=client_id)}
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-
-@app.get("/api/spotify/callback")
-async def spotify_callback(code: str, state: str):
-    """Handle Spotify auth callback."""
-    app_state = globals()["state"]
-    if not app_state.spotify_auth:
-         raise HTTPException(status_code=503, detail="Spotify not configured")
-    
-    try:
-        await app_state.spotify_auth.exchange_code(code, state)
-        return HTMLResponse(content="<h1>Authenticated!</h1><p>You can close this window.</p><script>window.close()</script>")
+        results = state.ytmusic_client.search(q)
+        return {"tracks": results}
     except Exception as e:
-        return HTMLResponse(content=f"<h1>Error</h1><p>{e}</p>", status_code=400)
-
-
-@app.get("/api/spotify/search")
-async def spotify_search(q: str):
-    """Search Spotify tracks."""
-    if not state.spotify_client:
-        raise HTTPException(status_code=503, detail="Spotify not configured")
-    
-    try:
-        results = await state.spotify_client.search(q)
-        return results
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
 
 
 @app.post("/api/mode/connected_choreographer/track")
-async def set_spotify_track(track: dict):
-    """Set the Spotify track for Connected Choreographer."""
-    print(f"[API] Received track selection: {track.get('name', 'Unknown')}")
+async def set_ytmusic_track(track: dict):
+    """Set the YouTube Music track for Connected Choreographer."""
+    print(f"[API] Received track selection: {track.get('title', 'Unknown')}")
 
     if not state.current_mode or state.current_mode.MODE_ID != "connected_choreographer":
         print(f"[API] Error: Connected Choreographer not active (current: {state.current_mode.MODE_ID if state.current_mode else None})")
@@ -532,44 +546,17 @@ async def set_spotify_track(track: dict):
             await state.current_mode.stop()
 
         print(f"[API] Setting track...")
-        await state.current_mode.set_spotify_track(track)
+        await state.current_mode.set_ytmusic_track(track)
 
         print(f"[API] Starting playback...")
         await state.current_mode.start()
 
-        print(f"[API] Track set successfully: {track['name']}")
-        return {"status": "track_set", "track": track["name"]}
+        print(f"[API] Track set successfully: {track.get('title', 'Unknown')}")
+        return {"status": "track_set", "track": track.get("title", "Unknown")}
     except Exception as e:
         print(f"[API] Error setting track: {e}")
         import traceback
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.post("/api/mode/connected_choreographer/youtube")
-async def set_youtube_url(data: dict):
-    """Set YouTube URL for Connected Choreographer."""
-    url = data.get("url")
-    if not url:
-        raise HTTPException(status_code=400, detail="URL is required")
-
-    print(f"[API] Received YouTube URL: {url}")
-
-    if not state.current_mode or state.current_mode.MODE_ID != "connected_choreographer":
-        print(f"[API] Error: Connected Choreographer not active")
-        raise HTTPException(status_code=400, detail="Connected Choreographer is not active")
-
-    try:
-        # If running, stop it first
-        if state.current_mode.running:
-            await state.current_mode.stop()
-
-        state.current_mode.set_youtube_url(url)
-        await state.current_mode.start()
-
-        return {"status": "started", "url": url}
-    except Exception as e:
-        print(f"[API] Error setting URL: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

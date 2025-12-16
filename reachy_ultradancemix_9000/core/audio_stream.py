@@ -20,10 +20,11 @@ class AudioStream:
     audio sources (microphone, loopback, etc.).
     """
 
-    # Known device patterns
+    # Known device patterns (platform-aware)
     DEVICE_PATTERNS = {
         "live_groove": "Reachy Mini Audio",  # Robot's USB microphone
-        "bluetooth_streamer": "BlackHole",  # Mac loopback device
+        "bluetooth_streamer": "pulse",  # PulseAudio default source (set to monitor for loopback)
+        "bluetooth_streamer_mac": "BlackHole",  # Mac loopback device
     }
 
     def __init__(
